@@ -5,18 +5,19 @@ import { Wallet } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 
 export function WalletButton({ goDashboardOnConnect = false }: { goDashboardOnConnect?: boolean }) {
-  const { connected, address, connect, disconnect } = useWallet();
+  const { connected, address, connecting, connect, disconnect } = useWallet();
   const navigate = useNavigate();
   if (!connected) {
     return (
       <Button
-        onClick={() => {
-          connect();
+        disabled={connecting}
+        onClick={async () => {
+          await connect();
           if (goDashboardOnConnect) navigate({ to: "/dashboard" });
         }}
         className="rounded-full bg-white px-5 text-black hover:bg-white/90"
       >
-        Connect Wallet
+        {connecting ? "Connecting..." : "Connect Wallet"}
       </Button>
     );
   }

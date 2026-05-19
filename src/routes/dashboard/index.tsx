@@ -1,18 +1,28 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { GlassCard } from "@/components/GlassCard";
 import { AuctionCard } from "@/components/AuctionCard";
-import { auctions, myBidHistory, myNFTs, myAuctions, mockWallet } from "@/lib/mockData";
+import { useAuctions } from "@/lib/useAuctions";
+import { useWallet } from "@/lib/wallet";
+import { fetchWalletNfts } from "@/lib/nftApi";
+import { useEffect, useState } from "react";
 import { Image, Gavel, Coins, Trophy } from "lucide-react";
 
 export const Route = createFileRoute("/dashboard/")({ component: Overview });
 
 function Overview() {
+  const { address, connected } = useWallet();
+  const { auctions } = useAuctions();
+  const [nftCount, setNftCount] = useState(0);
   const live = auctions.filter((a) => a.status === "LIVE").slice(0, 3);
-  const recentBids = myBidHistory.slice(0, 3);
+  const myAuctions = auctions.filter((auction) => auction.seller.toLowerCase() === address.toLowerCase());
   const earnings = myAuctions
     .filter((a) => a.status === "ENDED")
     .reduce((s, a) => s + a.currentBid, 0);
-  const won = myBidHistory.filter((b) => b.result === "WON").length;
+
+  useEffect(() => {
+    if (!connected || !address) return;
+    fetchWalletNfts(address).then((items) => setNftCount(items.length)).catch(() => setNftCount(0));
+  }, [address, connected]);
 
   return (
     <div className="space-y-10">
@@ -24,10 +34,10 @@ function Overview() {
       </header>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <SummaryCard icon={Image} label="NFTs Owned" value={mockWallet.totalNFTs.toString()} sub={`${mockWallet.totalValueEth} ETH total`} />
-        <SummaryCard icon={Gavel} label="Active Bids" value={myBidHistory.filter(b => b.result === "OUTBID").length.toString()} sub="In play right now" />
+        <SummaryCard icon={Image} label="NFTs Owned" value={nftCount.toString()} sub="From connected wallet" />
+        <SummaryCard icon={Gavel} label="My Auctions" value={myAuctions.length.toString()} sub="Created on contract" />
         <SummaryCard icon={Coins} label="Total Earnings" value={`${earnings.toFixed(2)} ETH`} sub="From closed auctions" />
-        <SummaryCard icon={Trophy} label="Auctions Won" value={won.toString()} sub="As a bidder" />
+        <SummaryCard icon={Trophy} label="Live Rooms" value={live.length.toString()} sub="Calling now" />
       </div>
 
       <section>
@@ -35,33 +45,13 @@ function Overview() {
           <h2 className="text-2xl font-semibold tracking-tight">Live now</h2>
           <Link to="/dashboard/live" className="text-sm text-white/50 hover:text-white">View all →</Link>
         </div>
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {live.map((a) => <AuctionCard key={a.id} auction={a} />)}
-        </div>
-      </section>
-
-      <section>
-        <div className="mb-5 flex items-end justify-between">
-          <h2 className="text-2xl font-semibold tracking-tight">Recent bids</h2>
-          <Link to="/dashboard/bids" className="text-sm text-white/50 hover:text-white">View all →</Link>
-        </div>
-        <GlassCard className="divide-y divide-white/5">
-          {recentBids.map((b) => (
-            <div key={b.id} className="flex items-center gap-4 p-4">
-              <img src={b.nft.image} alt="" className="h-12 w-12 rounded-lg object-cover" />
-              <div className="flex-1 min-w-0">
-                <div className="truncate text-sm font-medium">{b.nft.name}</div>
-                <div className="text-xs text-white/40">{b.nft.collection}</div>
-              </div>
-              <div className="text-right">
-                <div className="text-sm font-semibold">{b.myBid} ETH</div>
-                <div className={`text-[10px] uppercase tracking-wider ${
-                  b.result === "WON" ? "text-emerald-400" : b.result === "OUTBID" ? "text-amber-400" : "text-white/40"
-                }`}>{b.result}</div>
-              </div>
-            </div>
-          ))}
-        </GlassCard>
+        {live.length ? (
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {live.map((a) => <AuctionCard key={a.id} auction={a} />)}
+          </div>
+        ) : (
+          <GlassCard className="p-6 text-sm text-white/60">No live auctions on the configured contract yet.</GlassCard>
+        )}
       </section>
     </div>
   );

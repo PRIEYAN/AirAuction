@@ -1,26 +1,97 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
-import { myNFTs, type NFT } from "@/lib/mockData";
+import { useEffect, useState } from "react";
+import type { NFT } from "@/lib/mockData";
 import { NFTCard } from "@/components/NFTCard";
 import { GlassCard } from "@/components/GlassCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Check, ChevronLeft, ChevronRight, PartyPopper } from "lucide-react";
+import { approveNftForEscrow, createEscrowAuction } from "@/lib/auctionContract";
+import { fetchCollectionFloorEth, fetchWalletNfts } from "@/lib/nftApi";
+import { pinAuctionLogToIpfs } from "@/lib/ipfs";
+import { useWallet } from "@/lib/wallet";
+import { Check, ChevronLeft, ChevronRight, Loader2, PartyPopper } from "lucide-react";
 
 export const Route = createFileRoute("/dashboard/raise")({ component: Raise });
 
 function Raise() {
+  const { connected, address, connect } = useWallet();
   const [step, setStep] = useState(0);
   const [nft, setNft] = useState<NFT | null>(null);
+  const [walletNfts, setWalletNfts] = useState<NFT[]>([]);
+  const [loadingNfts, setLoadingNfts] = useState(false);
   const [reserve, setReserve] = useState("1.0");
+  const [startingBid, setStartingBid] = useState("0.8");
+  const [depositPct, setDepositPct] = useState("15");
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
   const [desc, setDesc] = useState("");
   const [done, setDone] = useState(false);
+  const [floor, setFloor] = useState<number | null>(null);
+  const [status, setStatus] = useState("");
+  const [error, setError] = useState("");
 
-  const canNext = (step === 0 && nft) || (step === 1 && reserve && start && end);
+  useEffect(() => {
+    if (!connected || !address) return;
+    setLoadingNfts(true);
+    setError("");
+    fetchWalletNfts(address)
+      .then(setWalletNfts)
+      .catch((err) => setError(err instanceof Error ? err.message : "Could not load wallet NFTs."))
+      .finally(() => setLoadingNfts(false));
+  }, [address, connected]);
+
+  useEffect(() => {
+    if (!nft) return;
+    setFloor(null);
+    fetchCollectionFloorEth(nft.contractAddress)
+      .then(setFloor)
+      .catch(() => setFloor(null));
+  }, [nft]);
+
+  const canNext = (step === 0 && nft) || (step === 1 && reserve && startingBid && start && end);
+
+  const confirmListing = async () => {
+    if (!nft) return;
+    setError("");
+    try {
+      setStatus("Pinning auction datalog to IPFS...");
+      const metadataURI = await pinAuctionLogToIpfs({
+        kind: "auctionair.listing",
+        seller: address,
+        nft,
+        reserveEth: reserve,
+        startingBidEth: startingBid,
+        floorEth: floor,
+        startTime: start,
+        endTime: end,
+        description: desc,
+        createdAt: new Date().toISOString(),
+      });
+
+      setStatus("Requesting NFT escrow approval in MetaMask...");
+      await approveNftForEscrow(nft.contractAddress, nft.tokenId);
+
+      setStatus("Creating on-chain auction and moving NFT into escrow...");
+      await createEscrowAuction({
+        nftContract: nft.contractAddress,
+        tokenId: nft.tokenId,
+        reserveEth: reserve,
+        startingBidEth: startingBid,
+        startTime: start,
+        endTime: end,
+        depositBps: Math.round(Number(depositPct) * 100),
+        metadataURI,
+      });
+
+      setStatus("");
+      setDone(true);
+    } catch (err) {
+      setStatus("");
+      setError(err instanceof Error ? err.message : "Listing failed.");
+    }
+  };
 
   if (done) {
     return (
@@ -53,11 +124,33 @@ function Raise() {
       </div>
 
       {step === 0 && (
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {myNFTs.map((n) => (
-            <NFTCard key={n.id} nft={n} onClick={() => setNft(n)} selected={nft?.id === n.id} />
-          ))}
-        </div>
+        <>
+          {!connected ? (
+            <GlassCard className="max-w-xl p-6">
+              <h2 className="text-xl font-semibold">Connect your seller wallet</h2>
+              <p className="mt-2 text-sm text-white/50">
+                AuctionAir will request a signature, then fetch the NFTs owned by this wallet from Alchemy.
+              </p>
+              <Button onClick={connect} className="mt-5 rounded-full bg-white text-black hover:bg-white/90">
+                Connect MetaMask
+              </Button>
+            </GlassCard>
+          ) : loadingNfts ? (
+            <GlassCard className="flex max-w-xl items-center gap-3 p-6 text-sm text-white/60">
+              <Loader2 className="h-4 w-4 animate-spin" /> Fetching wallet NFTs from Alchemy...
+            </GlassCard>
+          ) : walletNfts.length ? (
+            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {walletNfts.map((n) => (
+                <NFTCard key={n.id} nft={n} onClick={() => setNft(n)} selected={nft?.id === n.id} />
+              ))}
+            </div>
+          ) : (
+            <GlassCard className="max-w-xl p-6 text-sm text-white/60">
+              No NFTs were returned for this wallet on the configured Alchemy network.
+            </GlassCard>
+          )}
+        </>
       )}
 
       {step === 1 && nft && (
@@ -70,8 +163,20 @@ function Raise() {
             </div>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Collection floor">
+              <div className="rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/70">
+                {floor == null ? "No Reservoir floor found" : `${floor} ETH`}
+              </div>
+            </Field>
+            <div />
             <Field label="Reserve price (ETH)">
               <Input value={reserve} onChange={(e) => setReserve(e.target.value)} className="border-white/10 bg-white/5" />
+            </Field>
+            <Field label="Starting bid (ETH)">
+              <Input value={startingBid} onChange={(e) => setStartingBid(e.target.value)} className="border-white/10 bg-white/5" />
+            </Field>
+            <Field label="Bidder deposit (%)">
+              <Input value={depositPct} onChange={(e) => setDepositPct(e.target.value)} className="border-white/10 bg-white/5" />
             </Field>
             <div />
             <Field label="Start date/time">
@@ -96,10 +201,22 @@ function Raise() {
             <Row k="Collection" v={nft.collection} />
             <Row k="Chain" v={nft.chain} />
             <Row k="Reserve" v={`${reserve} ETH`} />
+            <Row k="Starting bid" v={`${startingBid} ETH`} />
+            <Row k="Bidder deposit" v={`${depositPct}%`} />
+            <Row k="Floor" v={floor == null ? "No Reservoir floor found" : `${floor} ETH`} />
             <Row k="Starts" v={start || "—"} />
             <Row k="Ends" v={end || "—"} />
             <Row k="Description" v={desc || "—"} />
           </div>
+          <p className="mt-5 text-xs text-white/40">
+            MetaMask will open for approval if needed, then for the auction escrow transaction.
+          </p>
+        </GlassCard>
+      )}
+
+      {(error || status) && (
+        <GlassCard className={`max-w-2xl p-4 text-sm ${error ? "text-red-200" : "text-white/70"}`}>
+          {status || error}
         </GlassCard>
       )}
 
@@ -113,8 +230,8 @@ function Raise() {
             Next <ChevronRight className="ml-1 h-4 w-4" />
           </Button>
         ) : (
-          <Button onClick={() => setDone(true)} className="rounded-full bg-white text-black hover:bg-white/90">
-            <Check className="mr-1 h-4 w-4" /> Confirm
+          <Button disabled={Boolean(status)} onClick={confirmListing} className="rounded-full bg-white text-black hover:bg-white/90">
+            {status ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Check className="mr-1 h-4 w-4" />} Confirm
           </Button>
         )}
       </div>

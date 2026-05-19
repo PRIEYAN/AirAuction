@@ -1,16 +1,21 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { myAuctions } from "@/lib/mockData";
 import { AuctionCard } from "@/components/AuctionCard";
 import { GlassCard } from "@/components/GlassCard";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useCountdown } from "@/lib/useCountdown";
 import { Button } from "@/components/ui/button";
+import { useAuctions } from "@/lib/useAuctions";
+import { useWallet } from "@/lib/wallet";
+import type { Auction } from "@/lib/mockData";
 
 export const Route = createFileRoute("/dashboard/my-auctions")({ component: MyAuctions });
 
 function MyAuctions() {
   const [view, setView] = useState<"cards" | "table">("cards");
+  const { address } = useWallet();
+  const { auctions, loading, error } = useAuctions();
+  const myAuctions = auctions.filter((auction) => auction.seller.toLowerCase() === address.toLowerCase());
   return (
     <div className="space-y-8">
       <header className="flex flex-wrap items-end justify-between gap-4">
@@ -29,7 +34,13 @@ function MyAuctions() {
         </div>
       </header>
 
-      {view === "cards" ? (
+      {loading ? (
+        <GlassCard className="p-6 text-sm text-white/60">Loading your on-chain auctions...</GlassCard>
+      ) : error ? (
+        <GlassCard className="p-6 text-sm text-red-200">{error}</GlassCard>
+      ) : !myAuctions.length ? (
+        <GlassCard className="p-6 text-sm text-white/60">No auctions from your connected wallet yet.</GlassCard>
+      ) : view === "cards" ? (
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {myAuctions.map((a) => <AuctionCard key={a.id} auction={a} cta="View Auction" />)}
         </div>
@@ -57,7 +68,7 @@ function MyAuctions() {
   );
 }
 
-function Row({ a }: { a: typeof myAuctions[number] }) {
+function Row({ a }: { a: Auction }) {
   const { label } = useCountdown(a.status === "SCHEDULED" ? a.startTime : a.endTime);
   return (
     <tr className="hover:bg-white/5">

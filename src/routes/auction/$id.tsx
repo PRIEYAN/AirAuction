@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { auctions, truncateAddr, type Bid } from "@/lib/mockData";
+import { truncateAddr, type Auction, type Bid } from "@/lib/mockData";
 import { GlassCard } from "@/components/GlassCard";
 import { ChainBadge } from "@/components/ChainBadge";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -9,88 +9,106 @@ import { useCountdown } from "@/lib/useCountdown";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { ArrowLeft, Send, Sparkles } from "lucide-react";
+import { fetchOnchainAuction, placeOnchainBid, registerForAuction } from "@/lib/auctionContract";
+import { askAuctioneer } from "@/lib/aiAuctioneer";
+import { ArrowLeft, Loader2, Send, Sparkles } from "lucide-react";
 
 export const Route = createFileRoute("/auction/$id")({ component: AuctionRoom });
 
-const aiNarrationLines = [
-  "We're at {bid} ETH — this piece has only 3 known holders globally. Who's countering?",
-  "Going once at {bid} ETH. The trait pairing here is statistically a 0.4% combo.",
-  "A late bid just crossed the wire. {bid} ETH and rising fast.",
-  "Last sale of this collection cleared at 4.2 ETH. We're approaching that ceiling.",
-  "Quiet on the floor — but two wallets just connected. Hold your bids.",
-  "{bid} ETH. This bidder has won 8 auctions on AuctionAir in the last 30 days.",
-  "Reserve has been met. Every bid from here is real value crossing hands.",
-];
-
-const aiReplies = [
-  "Great question — provenance traces back to the original mint wallet, untouched.",
-  "Rarity score for this piece sits in the top 2% of the collection.",
-  "Holder count is currently 3,142, and concentration is healthy.",
-  "Floor on Base is 0.6 ETH, but this token's traits push it well above that.",
-];
-
 function AuctionRoom() {
   const { id } = Route.useParams();
-  const auction = auctions.find((a) => a.id === id) ?? auctions[0];
-  const { label } = useCountdown(auction.endTime);
+  const [auction, setAuction] = useState<Auction | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const { label } = useCountdown(auction?.endTime ?? new Date().toISOString());
 
-  const [bids, setBids] = useState<Bid[]>(auction.bidHistory);
-  const [currentBid, setCurrentBid] = useState(auction.currentBid);
+  const [bids, setBids] = useState<Bid[]>([]);
+  const [currentBid, setCurrentBid] = useState(0);
   const [chat, setChat] = useState<{ who: string; text: string; mine?: boolean }[]>([
-    { who: "AI Auctioneer", text: `Welcome to the floor. ${auction.nft.name} is now open at ${auction.currentBid} ETH.` },
   ]);
   const [question, setQuestion] = useState("");
   const [bidOpen, setBidOpen] = useState(false);
-  const [bidAmount, setBidAmount] = useState((currentBid + 0.1).toFixed(2));
+  const [registerOpen, setRegisterOpen] = useState(false);
+  const [bidAmount, setBidAmount] = useState("0");
+  const [depositAmount, setDepositAmount] = useState("0");
+  const [busy, setBusy] = useState("");
   const chatEnd = useRef<HTMLDivElement>(null);
 
-  // Live AI narration every 4s
   useEffect(() => {
-    const id = setInterval(() => {
-      const line = aiNarrationLines[Math.floor(Math.random() * aiNarrationLines.length)];
-      setChat((c) => [...c, { who: "AI Auctioneer", text: line.replace("{bid}", currentBid.toFixed(2)) }]);
-    }, 4000);
-    return () => clearInterval(id);
-  }, [currentBid]);
-
-  // Live bid feed every 6s
-  useEffect(() => {
-    const id = setInterval(() => {
-      setCurrentBid((cb) => {
-        const next = +(cb + 0.05 + Math.random() * 0.4).toFixed(2);
-        setBids((b) => [
-          { bidder: "0x" + Math.random().toString(16).slice(2, 42).padEnd(40, "a"), amount: next, time: "just now" },
-          ...b,
-        ].slice(0, 30));
-        return next;
-      });
-    }, 6000);
-    return () => clearInterval(id);
-  }, []);
+    setLoading(true);
+    fetchOnchainAuction(id)
+      .then((next) => {
+        setAuction(next);
+        setBids(next.bidHistory);
+        setCurrentBid(next.currentBid);
+        setBidAmount((next.currentBid + 0.01).toFixed(4));
+        setDepositAmount((next.currentBid * 0.15).toFixed(4));
+        setChat([{ who: "AI Auctioneer", text: `Welcome to the floor. ${next.nft.name} is open at ${next.currentBid} ETH.` }]);
+      })
+      .catch((err) => setError(err instanceof Error ? err.message : "Could not load auction."))
+      .finally(() => setLoading(false));
+  }, [id]);
 
   useEffect(() => { chatEnd.current?.scrollIntoView({ behavior: "smooth" }); }, [chat]);
 
-  const askQuestion = () => {
-    if (!question.trim()) return;
+  const context = auction && {
+    lotName: auction.nft.name,
+    collection: auction.nft.collection,
+    traits: auction.nft.traits,
+    currentBidEth: currentBid,
+    reserveEth: auction.reservePrice,
+    bidderCount: auction.bidCount,
+  };
+
+  const askQuestion = async () => {
+    if (!question.trim() || !context) return;
     setChat((c) => [...c, { who: "You", text: question, mine: true }]);
     const q = question;
     setQuestion("");
-    setTimeout(() => {
-      setChat((c) => [...c, { who: "AI Auctioneer", text: aiReplies[Math.floor(Math.random() * aiReplies.length)] }]);
-    }, 1000);
-    void q;
+    try {
+      const answer = await askAuctioneer(context, q);
+      setChat((c) => [...c, { who: "AI Auctioneer", text: answer }]);
+    } catch (err) {
+      setChat((c) => [...c, { who: "System", text: err instanceof Error ? err.message : "AI response failed." }]);
+    }
   };
 
-  const placeBid = () => {
+  const placeBid = async () => {
+    if (!auction || !context) return;
     const amt = parseFloat(bidAmount);
     if (!amt || amt <= currentBid) return;
-    setCurrentBid(amt);
-    setBids((b) => [{ bidder: "0xYOU000000000000000000000000000000000000", amount: amt, time: "just now" }, ...b]);
-    setChat((c) => [...c, { who: "AI Auctioneer", text: `New bid at ${amt} ETH from the floor. Who's next?` }]);
-    setBidOpen(false);
-    setBidAmount((amt + 0.1).toFixed(2));
+    setBusy("Submitting bid transaction...");
+    try {
+      await placeOnchainBid(auction.id, bidAmount);
+      setCurrentBid(amt);
+      setBids((b) => [{ bidder: "Your wallet", amount: amt, time: "just now" }, ...b]);
+      const narration = await askAuctioneer({ ...context, currentBidEth: amt }, `A new bid landed at ${amt} ETH. Narrate it.`);
+      setChat((c) => [...c, { who: "AI Auctioneer", text: narration }]);
+      setBidOpen(false);
+      setBidAmount((amt + 0.01).toFixed(4));
+    } catch (err) {
+      setChat((c) => [...c, { who: "System", text: err instanceof Error ? err.message : "Bid failed." }]);
+    } finally {
+      setBusy("");
+    }
   };
+
+  const register = async () => {
+    if (!auction) return;
+    setBusy("Locking bidder deposit...");
+    try {
+      await registerForAuction(auction.id, depositAmount);
+      setRegisterOpen(false);
+      setChat((c) => [...c, { who: "System", text: "Deposit locked. You are registered for this auction." }]);
+    } catch (err) {
+      setChat((c) => [...c, { who: "System", text: err instanceof Error ? err.message : "Registration failed." }]);
+    } finally {
+      setBusy("");
+    }
+  };
+
+  if (loading) return <div className="min-h-screen bg-black p-8 text-white">Loading auction...</div>;
+  if (error || !auction) return <div className="min-h-screen bg-black p-8 text-red-200">{error || "Auction not found."}</div>;
 
   return (
     <div className="relative min-h-screen bg-black text-white">
@@ -183,6 +201,9 @@ function AuctionRoom() {
                   className="mt-3 w-full rounded-full bg-white text-black hover:bg-white/90">
                   Place Bid
                 </Button>
+                <Button onClick={() => setRegisterOpen(true)} variant="ghost" className="mt-2 w-full rounded-full">
+                  Lock Deposit
+                </Button>
               </div>
               <div className="flex-1 overflow-y-auto p-3">
                 <div className="mb-2 px-1 text-[10px] uppercase tracking-wider text-white/40">Live feed</div>
@@ -215,8 +236,27 @@ function AuctionRoom() {
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setBidOpen(false)}>Cancel</Button>
-            <Button onClick={placeBid} className="rounded-full bg-white text-black hover:bg-white/90">
-              Confirm Bid
+            <Button disabled={Boolean(busy)} onClick={placeBid} className="rounded-full bg-white text-black hover:bg-white/90">
+              {busy ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null} Confirm Bid
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={registerOpen} onOpenChange={setRegisterOpen}>
+        <DialogContent className="border-white/10 bg-zinc-950/95 text-white">
+          <DialogHeader>
+            <DialogTitle>Lock bidder deposit</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="text-xs text-white/50">Deposit is refundable if you lose and counts toward your bid in this escrow.</div>
+            <Input value={depositAmount} onChange={(e) => setDepositAmount(e.target.value)}
+              className="border-white/10 bg-white/5 text-lg" />
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setRegisterOpen(false)}>Cancel</Button>
+            <Button disabled={Boolean(busy)} onClick={register} className="rounded-full bg-white text-black hover:bg-white/90">
+              {busy ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null} Lock Deposit
             </Button>
           </DialogFooter>
         </DialogContent>
