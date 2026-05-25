@@ -1,19 +1,35 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { truncateAddr, type Auction, type Bid } from "@/lib/mockData";
+import { truncateAddr } from "@/lib/format";
+import type { Auction, Bid } from "@/types/auction";
 import { GlassCard } from "@/components/GlassCard";
 import { ChainBadge } from "@/components/ChainBadge";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ChatBubble } from "@/components/ChatBubble";
-import { useCountdown } from "@/lib/useCountdown";
+import { AgentBadge } from "@/components/AgentBadge";
+import { useCountdown } from "@/hooks/useCountdown";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { fetchOnchainAuction, placeOnchainBid, registerForAuction } from "@/lib/auctionContract";
-import { askAuctioneer } from "@/lib/aiAuctioneer";
-import { ArrowLeft, Loader2, Send, Sparkles } from "lucide-react";
+import { fetchOnchainAuction, placeOnchainBid, registerForAuction } from "@/services/auctionContract";
+import { askAuctioneer, type OnchainReceipt } from "@/services/aiAuctioneer";
+import {
+  isAgentRegistryConfigured,
+  submitAgentFeedback,
+  type Verdict,
+} from "@/services/agentRegistry";
+import { env } from "@/config/env";
+import { ArrowLeft, ExternalLink, Loader2, Send, Sparkles, ThumbsDown, ThumbsUp } from "lucide-react";
 
 export const Route = createFileRoute("/auction/$id")({ component: AuctionRoom });
+
+interface ChatEntry {
+  who: string;
+  text: string;
+  mine?: boolean;
+  receipt?: OnchainReceipt | null;
+  feedback?: Verdict | "pending";
+}
 
 function AuctionRoom() {
   const { id } = Route.useParams();
@@ -24,8 +40,7 @@ function AuctionRoom() {
 
   const [bids, setBids] = useState<Bid[]>([]);
   const [currentBid, setCurrentBid] = useState(0);
-  const [chat, setChat] = useState<{ who: string; text: string; mine?: boolean }[]>([
-  ]);
+  const [chat, setChat] = useState<ChatEntry[]>([]);
   const [question, setQuestion] = useState("");
   const [bidOpen, setBidOpen] = useState(false);
   const [registerOpen, setRegisterOpen] = useState(false);
@@ -43,13 +58,20 @@ function AuctionRoom() {
         setCurrentBid(next.currentBid);
         setBidAmount((next.currentBid + 0.01).toFixed(4));
         setDepositAmount((next.currentBid * 0.15).toFixed(4));
-        setChat([{ who: "AI Auctioneer", text: `Welcome to the floor. ${next.nft.name} is open at ${next.currentBid} ETH.` }]);
+        setChat([
+          {
+            who: "AI Auctioneer",
+            text: `Welcome to the floor. ${next.nft.name} is open at ${next.currentBid} MNT.`,
+          },
+        ]);
       })
       .catch((err) => setError(err instanceof Error ? err.message : "Could not load auction."))
       .finally(() => setLoading(false));
   }, [id]);
 
-  useEffect(() => { chatEnd.current?.scrollIntoView({ behavior: "smooth" }); }, [chat]);
+  useEffect(() => {
+    chatEnd.current?.scrollIntoView({ behavior: "smooth" });
+  }, [chat]);
 
   const context = auction && {
     lotName: auction.nft.name,
@@ -60,16 +82,23 @@ function AuctionRoom() {
     bidderCount: auction.bidCount,
   };
 
+  const appendAuctioneerReply = (text: string, receipt?: OnchainReceipt | null) => {
+    setChat((c) => [...c, { who: "AI Auctioneer", text, receipt: receipt ?? null }]);
+  };
+
   const askQuestion = async () => {
-    if (!question.trim() || !context) return;
+    if (!question.trim() || !context || !auction) return;
     setChat((c) => [...c, { who: "You", text: question, mine: true }]);
     const q = question;
     setQuestion("");
     try {
-      const answer = await askAuctioneer(context, q);
-      setChat((c) => [...c, { who: "AI Auctioneer", text: answer }]);
+      const result = await askAuctioneer(context, q, auction.id);
+      appendAuctioneerReply(result.reply, result.onchain);
     } catch (err) {
-      setChat((c) => [...c, { who: "System", text: err instanceof Error ? err.message : "AI response failed." }]);
+      setChat((c) => [
+        ...c,
+        { who: "System", text: err instanceof Error ? err.message : "AI response failed." },
+      ]);
     }
   };
 
@@ -82,12 +111,19 @@ function AuctionRoom() {
       await placeOnchainBid(auction.id, bidAmount);
       setCurrentBid(amt);
       setBids((b) => [{ bidder: "Your wallet", amount: amt, time: "just now" }, ...b]);
-      const narration = await askAuctioneer({ ...context, currentBidEth: amt }, `A new bid landed at ${amt} ETH. Narrate it.`);
-      setChat((c) => [...c, { who: "AI Auctioneer", text: narration }]);
+      const result = await askAuctioneer(
+        { ...context, currentBidEth: amt },
+        `A new bid landed at ${amt} MNT. Narrate it.`,
+        auction.id,
+      );
+      appendAuctioneerReply(result.reply, result.onchain);
       setBidOpen(false);
       setBidAmount((amt + 0.01).toFixed(4));
     } catch (err) {
-      setChat((c) => [...c, { who: "System", text: err instanceof Error ? err.message : "Bid failed." }]);
+      setChat((c) => [
+        ...c,
+        { who: "System", text: err instanceof Error ? err.message : "Bid failed." },
+      ]);
     } finally {
       setBusy("");
     }
@@ -99,26 +135,62 @@ function AuctionRoom() {
     try {
       await registerForAuction(auction.id, depositAmount);
       setRegisterOpen(false);
-      setChat((c) => [...c, { who: "System", text: "Deposit locked. You are registered for this auction." }]);
+      setChat((c) => [
+        ...c,
+        { who: "System", text: "Deposit locked. You are registered for this auction." },
+      ]);
     } catch (err) {
-      setChat((c) => [...c, { who: "System", text: err instanceof Error ? err.message : "Registration failed." }]);
+      setChat((c) => [
+        ...c,
+        { who: "System", text: err instanceof Error ? err.message : "Registration failed." },
+      ]);
     } finally {
       setBusy("");
     }
   };
 
+  const rateReply = async (idx: number, verdict: Verdict) => {
+    const entry = chat[idx];
+    if (!entry || !entry.receipt?.txHash || !env.agentId) return;
+    setChat((c) => c.map((row, i) => (i === idx ? { ...row, feedback: "pending" } : row)));
+    try {
+      await submitAgentFeedback({
+        agentId: env.agentId!,
+        verdict,
+        decisionRef: entry.receipt.txHash,
+        memo: verdict === "positive" ? "thumbs up" : verdict === "negative" ? "thumbs down" : "neutral",
+      });
+      setChat((c) => c.map((row, i) => (i === idx ? { ...row, feedback: verdict } : row)));
+    } catch (err) {
+      setChat((c) => {
+        const next = [...c];
+        next[idx] = { ...next[idx], feedback: undefined };
+        next.push({
+          who: "System",
+          text: err instanceof Error ? err.message : "Failed to submit feedback.",
+        });
+        return next;
+      });
+    }
+  };
+
   if (loading) return <div className="min-h-screen bg-black p-8 text-white">Loading auction...</div>;
-  if (error || !auction) return <div className="min-h-screen bg-black p-8 text-red-200">{error || "Auction not found."}</div>;
+  if (error || !auction) {
+    return <div className="min-h-screen bg-black p-8 text-red-200">{error || "Auction not found."}</div>;
+  }
 
   return (
     <div className="relative min-h-screen bg-black text-white">
       <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(ellipse_at_top,rgba(120,80,255,0.18),transparent_60%)]" />
       <div className="relative">
-        <div className="flex items-center justify-between border-b border-white/5 px-6 py-4 md:px-10">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/5 px-6 py-4 md:px-10">
           <Link to="/dashboard/live" className="inline-flex items-center gap-2 text-sm text-white/60 hover:text-white">
             <ArrowLeft className="h-4 w-4" /> Back to live auctions
           </Link>
-          <StatusBadge status={auction.status} />
+          <div className="flex items-center gap-3">
+            <AgentBadge compact />
+            <StatusBadge status={auction.status} />
+          </div>
         </div>
 
         <div className="grid gap-5 p-5 md:p-8 lg:grid-cols-12">
@@ -154,6 +226,7 @@ function AuctionRoom() {
                 </div>
               </div>
             </GlassCard>
+            <AgentBadge />
           </div>
 
           {/* CENTER: AI chat */}
@@ -165,11 +238,16 @@ function AuctionRoom() {
                 </div>
                 <div>
                   <div className="text-sm font-semibold">AI Auctioneer</div>
-                  <div className="text-[10px] text-white/40">Live narration · Ask anything about this lot</div>
+                  <div className="text-[10px] text-white/40">Live narration · every reply benchmarked on Mantle</div>
                 </div>
               </div>
               <div className="flex-1 space-y-3 overflow-y-auto p-4">
-                {chat.map((m, i) => <ChatBubble key={i} who={m.who} text={m.text} mine={m.mine} />)}
+                {chat.map((m, i) => (
+                  <div key={i} className="space-y-1">
+                    <ChatBubble who={m.who} text={m.text} mine={m.mine} />
+                    {m.who === "AI Auctioneer" && <ReceiptRow entry={m} onRate={(verdict) => rateReply(i, verdict)} />}
+                  </div>
+                ))}
                 <div ref={chatEnd} />
               </div>
               <div className="flex gap-2 border-t border-white/10 p-3">
@@ -192,7 +270,7 @@ function AuctionRoom() {
             <GlassCard className="flex h-[calc(100svh-180px)] flex-col">
               <div className="border-b border-white/10 p-4">
                 <div className="text-[10px] uppercase tracking-wider text-white/40">Current bid</div>
-                <div className="text-3xl font-bold">{currentBid.toFixed(2)} ETH</div>
+                <div className="text-3xl font-bold">{currentBid.toFixed(2)} MNT</div>
                 <div className="mt-2 flex items-center justify-between text-xs">
                   <span className="text-white/40">Ends in</span>
                   <span className="font-mono">{label}</span>
@@ -212,7 +290,7 @@ function AuctionRoom() {
                     <li key={i} className="flex items-center justify-between rounded-lg border border-white/5 bg-white/5 px-3 py-2 text-xs">
                       <span className="font-mono text-white/70">{truncateAddr(b.bidder)}</span>
                       <span className="text-right">
-                        <div className="font-semibold text-white">{b.amount} ETH</div>
+                        <div className="font-semibold text-white">{b.amount} MNT</div>
                         <div className="text-[10px] text-white/40">{b.time}</div>
                       </span>
                     </li>
@@ -230,7 +308,7 @@ function AuctionRoom() {
             <DialogTitle>Place your bid</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 py-2">
-            <div className="text-xs text-white/50">Minimum next bid: {(currentBid + 0.01).toFixed(2)} ETH</div>
+            <div className="text-xs text-white/50">Minimum next bid: {(currentBid + 0.01).toFixed(2)} MNT</div>
             <Input value={bidAmount} onChange={(e) => setBidAmount(e.target.value)}
               className="border-white/10 bg-white/5 text-lg" />
           </div>
@@ -261,6 +339,65 @@ function AuctionRoom() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+function ReceiptRow({
+  entry,
+  onRate,
+}: {
+  entry: ChatEntry;
+  onRate: (verdict: Verdict) => void;
+}) {
+  const receipt = entry.receipt;
+  if (!receipt) return null;
+  return (
+    <div className="ml-2 flex flex-wrap items-center gap-2 text-[10px] text-white/50">
+      {receipt.txHash ? (
+        <a
+          href={receipt.explorerUrl ?? "#"}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-emerald-200"
+        >
+          ✓ Recorded on Mantle <ExternalLink className="h-3 w-3" />
+        </a>
+      ) : receipt.error ? (
+        <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-amber-200">
+          On-chain log skipped: {receipt.error}
+        </span>
+      ) : null}
+
+      {isAgentRegistryConfigured() && receipt.txHash && (
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => onRate("positive")}
+            disabled={entry.feedback === "pending" || entry.feedback === "positive"}
+            className={`flex h-6 w-6 items-center justify-center rounded-full border ${
+              entry.feedback === "positive"
+                ? "border-emerald-400 bg-emerald-500/30 text-emerald-100"
+                : "border-white/10 bg-white/5 hover:bg-white/10"
+            }`}
+            title="Reward this answer (writes to AgentReputationRegistry)"
+          >
+            <ThumbsUp className="h-3 w-3" />
+          </button>
+          <button
+            onClick={() => onRate("negative")}
+            disabled={entry.feedback === "pending" || entry.feedback === "negative"}
+            className={`flex h-6 w-6 items-center justify-center rounded-full border ${
+              entry.feedback === "negative"
+                ? "border-red-400 bg-red-500/30 text-red-100"
+                : "border-white/10 bg-white/5 hover:bg-white/10"
+            }`}
+            title="Flag this answer"
+          >
+            <ThumbsDown className="h-3 w-3" />
+          </button>
+          {entry.feedback === "pending" && <Loader2 className="h-3 w-3 animate-spin text-white/40" />}
+        </div>
+      )}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { env, requireEnv } from "./env";
+import { env, requireEnv } from "@/config/env";
 
 export async function pinAuctionLogToIpfs(payload: Record<string, unknown>) {
   const jwt = requireEnv(env.pinataJwt, "VITE_PINATA_JWT");

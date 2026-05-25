@@ -1,4 +1,4 @@
-import type { AuctionStatus } from "@/lib/mockData";
+import type { AuctionStatus } from "@/types/auction";
 import { cn } from "@/lib/utils";
 
 const map: Record<AuctionStatus, string> = {

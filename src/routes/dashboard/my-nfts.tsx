@@ -1,12 +1,13 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { NFTCard } from "@/components/NFTCard";
-import { truncateAddr, type NFT } from "@/lib/mockData";
+import { truncateAddr } from "@/lib/format";
+import type { NFT } from "@/types/auction";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ChainBadge } from "@/components/ChainBadge";
 import { Button } from "@/components/ui/button";
-import { useWallet } from "@/lib/wallet";
-import { fetchWalletNfts } from "@/lib/nftApi";
+import { useWallet } from "@/providers/WalletProvider";
+import { fetchWalletNfts } from "@/services/nftApi";
 import { Copy, Gavel, Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/dashboard/my-nfts")({ component: MyNFTs });
@@ -40,7 +41,7 @@ function MyNFTs() {
         <Button onClick={connect} className="rounded-full bg-white text-black hover:bg-white/90">Connect MetaMask</Button>
       ) : loading ? (
         <div className="inline-flex items-center gap-2 text-sm text-white/60">
-          <Loader2 className="h-4 w-4 animate-spin" /> Fetching NFTs from Alchemy...
+          <Loader2 className="h-4 w-4 animate-spin" /> Scanning configured NFT contracts on-chain...
         </div>
       ) : error ? (
         <div className="text-sm text-red-200">{error}</div>

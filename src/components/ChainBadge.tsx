@@ -1,4 +1,5 @@
-import { chainColors, type Chain } from "@/lib/mockData";
+import { chainColors } from "@/lib/chain-colors";
+import type { Chain } from "@/types/auction";
 import { cn } from "@/lib/utils";
 
 export function ChainBadge({ chain, className }: { chain: Chain; className?: string }) {

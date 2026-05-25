@@ -1,16 +1,16 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import type { NFT } from "@/lib/mockData";
+import type { NFT } from "@/types/auction";
 import { NFTCard } from "@/components/NFTCard";
 import { GlassCard } from "@/components/GlassCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { approveNftForEscrow, createEscrowAuction } from "@/lib/auctionContract";
-import { fetchCollectionFloorEth, fetchWalletNfts } from "@/lib/nftApi";
-import { pinAuctionLogToIpfs } from "@/lib/ipfs";
-import { useWallet } from "@/lib/wallet";
+import { approveNftForEscrow, createEscrowAuction } from "@/services/auctionContract";
+import { fetchCollectionFloorEth, fetchWalletNfts } from "@/services/nftApi";
+import { pinAuctionLogToIpfs } from "@/services/ipfs";
+import { useWallet } from "@/providers/WalletProvider";
 import { Check, ChevronLeft, ChevronRight, Loader2, PartyPopper } from "lucide-react";
 
 export const Route = createFileRoute("/dashboard/raise")({ component: Raise });
@@ -129,7 +129,7 @@ function Raise() {
             <GlassCard className="max-w-xl p-6">
               <h2 className="text-xl font-semibold">Connect your seller wallet</h2>
               <p className="mt-2 text-sm text-white/50">
-                AuctionAir will request a signature, then fetch the NFTs owned by this wallet from Alchemy.
+                AuctionAir will request a signature, then scan the configured NFT contracts on Mantle Sepolia for tokens you own.
               </p>
               <Button onClick={connect} className="mt-5 rounded-full bg-white text-black hover:bg-white/90">
                 Connect MetaMask
@@ -137,7 +137,7 @@ function Raise() {
             </GlassCard>
           ) : loadingNfts ? (
             <GlassCard className="flex max-w-xl items-center gap-3 p-6 text-sm text-white/60">
-              <Loader2 className="h-4 w-4 animate-spin" /> Fetching wallet NFTs from Alchemy...
+              <Loader2 className="h-4 w-4 animate-spin" /> Scanning NFT contracts for tokens owned by this wallet...
             </GlassCard>
           ) : walletNfts.length ? (
             <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -147,7 +147,7 @@ function Raise() {
             </div>
           ) : (
             <GlassCard className="max-w-xl p-6 text-sm text-white/60">
-              No NFTs were returned for this wallet on the configured Alchemy network.
+              No NFTs found. Set <code className="text-white/80">VITE_NFT_CONTRACTS</code> to a contract you own tokens on, or mint a test NFT with <code className="text-white/80">npm run mint:mantle-sepolia</code> in the <code className="text-white/80">blockchain/</code> folder.
             </GlassCard>
           )}
         </>

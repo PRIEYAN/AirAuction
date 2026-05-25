@@ -9,7 +9,7 @@ import {
 } from "@tanstack/react-router";
 
 import appCss from "../styles.css?url";
-import { WalletProvider } from "@/lib/wallet";
+import { WalletProvider } from "@/providers/WalletProvider";
 
 function NotFoundComponent() {
   return (

@@ -1,9 +1,9 @@
 import { Link, useLocation } from "@tanstack/react-router";
 import {
-  LayoutDashboard, Radio, Calendar, Image, Gavel, History, Plus, LogOut,
+  LayoutDashboard, Radio, Calendar, Image, Gavel, History, Plus, LogOut, Bot,
 } from "lucide-react";
-import { useWallet } from "@/lib/wallet";
-import { truncateAddr, mockWallet } from "@/lib/mockData";
+import { useWallet } from "@/providers/WalletProvider";
+import { truncateAddr } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 const items = [
@@ -14,6 +14,7 @@ const items = [
   { to: "/dashboard/my-auctions", label: "My Auctions", icon: Gavel },
   { to: "/dashboard/bids", label: "Bid History", icon: History },
   { to: "/dashboard/raise", label: "Raise Auction", icon: Plus },
+  { to: "/agents", label: "AI Agents", icon: Bot },
 ];
 
 export function Sidebar() {
@@ -44,10 +45,14 @@ export function Sidebar() {
       </nav>
       <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-3">
         <div className="text-[10px] uppercase tracking-wider text-white/40">Wallet</div>
-        <div className="mt-1 text-sm text-white">{truncateAddr(address || mockWallet.address)}</div>
-        <button onClick={disconnect} className="mt-2 flex items-center gap-1.5 text-xs text-white/50 hover:text-white">
-          <LogOut className="h-3 w-3" /> Disconnect
-        </button>
+        <div className="mt-1 text-sm text-white">
+          {address ? truncateAddr(address) : <span className="text-white/40">Not connected</span>}
+        </div>
+        {address && (
+          <button onClick={disconnect} className="mt-2 flex items-center gap-1.5 text-xs text-white/50 hover:text-white">
+            <LogOut className="h-3 w-3" /> Disconnect
+          </button>
+        )}
       </div>
     </aside>
   );

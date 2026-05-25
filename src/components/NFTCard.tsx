@@ -1,4 +1,4 @@
-import type { NFT } from "@/lib/mockData";
+import type { NFT } from "@/types/auction";
 import { GlassCard } from "./GlassCard";
 import { ChainBadge } from "./ChainBadge";
 

@@ -3,11 +3,11 @@ import { useState } from "react";
 import { AuctionCard } from "@/components/AuctionCard";
 import { GlassCard } from "@/components/GlassCard";
 import { StatusBadge } from "@/components/StatusBadge";
-import { useCountdown } from "@/lib/useCountdown";
+import { useCountdown } from "@/hooks/useCountdown";
 import { Button } from "@/components/ui/button";
-import { useAuctions } from "@/lib/useAuctions";
-import { useWallet } from "@/lib/wallet";
-import type { Auction } from "@/lib/mockData";
+import { useAuctions } from "@/hooks/useAuctions";
+import { useWallet } from "@/providers/WalletProvider";
+import type { Auction } from "@/types/auction";
 
 export const Route = createFileRoute("/dashboard/my-auctions")({ component: MyAuctions });
 

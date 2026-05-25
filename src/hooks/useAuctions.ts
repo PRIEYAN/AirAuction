@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { fetchOnchainAuctions } from "./auctionContract";
-import type { Auction } from "./mockData";
+import { fetchOnchainAuctions } from "@/services/auctionContract";
+import type { Auction } from "@/types/auction";
 
 export function useAuctions() {
   const [auctions, setAuctions] = useState<Auction[]>([]);

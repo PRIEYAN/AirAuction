@@ -1,9 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { GlassCard } from "@/components/GlassCard";
 import { AuctionCard } from "@/components/AuctionCard";
-import { useAuctions } from "@/lib/useAuctions";
-import { useWallet } from "@/lib/wallet";
-import { fetchWalletNfts } from "@/lib/nftApi";
+import { useAuctions } from "@/hooks/useAuctions";
+import { useWallet } from "@/providers/WalletProvider";
+import { fetchWalletNfts } from "@/services/nftApi";
 import { useEffect, useState } from "react";
 import { Image, Gavel, Coins, Trophy } from "lucide-react";
 

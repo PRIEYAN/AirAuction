@@ -7,7 +7,11 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "compile": "hardhat compile",
+    "deploy:mantle-sepolia": "hardhat run scripts/deploy-mantle-sepolia.ts",
+    "deploy:mantle-sepolia:ignition": "hardhat ignition deploy ignition/modules/AuctionAirEscrow.ts --network mantleSepolia",
+    "mint:mantle-sepolia": "hardhat run scripts/mint-test-nft.ts",
+    "deploy:agents:mantle-sepolia": "hardhat run scripts/deploy-agents-mantle-sepolia.ts"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-ethers": "^4.0.11",

@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AuctionCard } from "@/components/AuctionCard";
-import { useAuctions } from "@/lib/useAuctions";
+import { useAuctions } from "@/hooks/useAuctions";
 import { GlassCard } from "@/components/GlassCard";
 
 export const Route = createFileRoute("/dashboard/live")({ component: LivePage });

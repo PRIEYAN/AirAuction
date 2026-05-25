@@ -1,8 +1,8 @@
-import type { Auction } from "@/lib/mockData";
+import type { Auction } from "@/types/auction";
 import { GlassCard } from "./GlassCard";
 import { StatusBadge } from "./StatusBadge";
 import { ChainBadge } from "./ChainBadge";
-import { useCountdown } from "@/lib/useCountdown";
+import { useCountdown } from "@/hooks/useCountdown";
 import { Button } from "@/components/ui/button";
 import { Link } from "@tanstack/react-router";
 import { Gavel, Users } from "lucide-react";
