@@ -1,8 +1,8 @@
 {
   "network": "mantleSepolia",
   "chainId": 5003,
-  "address": "0x3873f1a88a95F6d6390cAD7CaA3E71f24221dCC2",
-  "explorer": "https://explorer.sepolia.mantle.xyz/address/0x3873f1a88a95F6d6390cAD7CaA3E71f24221dCC2",
+  "address": "0xf460f828172dd80b30410cECC6Ec511cBB013388",
+  "explorer": "https://explorer.sepolia.mantle.xyz/address/0xf460f828172dd80b30410cECC6Ec511cBB013388",
   "mints": [
     {
       "tokenId": "1",
@@ -93,6 +93,96 @@
       },
       "recipient": "0x348B754103e12434AEe3Df42471aD939911939Dd",
       "mintedAt": "2026-05-26T06:26:45.811Z"
+    },
+    {
+      "tokenId": "1",
+      "txHash": "0xc24b3d2c3b3c99bb877c0290c9a04d791930c029ffa5fb43ee00f8703dd625af",
+      "metadata": {
+        "name": "AuctionAir Test #1",
+        "description": "Testnet collectible minted by the AuctionAir mint script. Use it to exercise the auction escrow on Mantle Sepolia.",
+        "image": "https://picsum.photos/seed/aatest-348b7541-1779780023658-1/800/800",
+        "external_url": "https://github.com/",
+        "attributes": [
+          {
+            "trait_type": "Background",
+            "value": "Void"
+          },
+          {
+            "trait_type": "Body",
+            "value": "Obsidian"
+          },
+          {
+            "trait_type": "Eyes",
+            "value": "Hypnotic"
+          },
+          {
+            "trait_type": "Aura",
+            "value": "Rare"
+          }
+        ]
+      },
+      "recipient": "0x348B754103e12434AEe3Df42471aD939911939Dd",
+      "mintedAt": "2026-05-26T07:20:54.358Z"
+    },
+    {
+      "tokenId": "2",
+      "txHash": "0xfedde0c48fa7f1bc6dc8ccdf8e76be3ccba18a2fb562b163801154d88f8a88b8",
+      "metadata": {
+        "name": "AuctionAir Test #2",
+        "description": "Testnet collectible minted by the AuctionAir mint script. Use it to exercise the auction escrow on Mantle Sepolia.",
+        "image": "https://picsum.photos/seed/aatest-348b7541-1779780035241-2/800/800",
+        "external_url": "https://github.com/",
+        "attributes": [
+          {
+            "trait_type": "Background",
+            "value": "Neon"
+          },
+          {
+            "trait_type": "Body",
+            "value": "Ivory"
+          },
+          {
+            "trait_type": "Eyes",
+            "value": "Glitch"
+          },
+          {
+            "trait_type": "Aura",
+            "value": "Epic"
+          }
+        ]
+      },
+      "recipient": "0x348B754103e12434AEe3Df42471aD939911939Dd",
+      "mintedAt": "2026-05-26T07:20:54.359Z"
+    },
+    {
+      "tokenId": "3",
+      "txHash": "0xc62095c79f4e1bd929d2db44f9daa1eec876e92211e30e43a13006a9c689a07d",
+      "metadata": {
+        "name": "AuctionAir Test #3",
+        "description": "Testnet collectible minted by the AuctionAir mint script. Use it to exercise the auction escrow on Mantle Sepolia.",
+        "image": "https://picsum.photos/seed/aatest-348b7541-1779780046734-3/800/800",
+        "external_url": "https://github.com/",
+        "attributes": [
+          {
+            "trait_type": "Background",
+            "value": "Mist"
+          },
+          {
+            "trait_type": "Body",
+            "value": "Solar"
+          },
+          {
+            "trait_type": "Eyes",
+            "value": "Solar"
+          },
+          {
+            "trait_type": "Aura",
+            "value": "Legendary"
+          }
+        ]
+      },
+      "recipient": "0x348B754103e12434AEe3Df42471aD939911939Dd",
+      "mintedAt": "2026-05-26T07:20:54.359Z"
     }
   ]
 }

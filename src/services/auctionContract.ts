@@ -127,10 +127,25 @@ async function loadAuctionEvents(contract: Contract): Promise<{
   settlements: Map<string, SettlementLogEntry>;
   blockTimes: Map<number, number>;
 }> {
-  const [bidLogs, settleLogs] = await Promise.all([
-    contract.queryFilter(contract.filters.BidPlaced(), 0, "latest"),
-    contract.queryFilter(contract.filters.AuctionSettled(), 0, "latest"),
-  ]);
+  const provider = contract.runner?.provider;
+  let bidLogs: any[] = [];
+  let settleLogs: any[] = [];
+
+  try {
+    [bidLogs, settleLogs] = await Promise.all([
+      contract.queryFilter(contract.filters.BidPlaced(), 0, "latest"),
+      contract.queryFilter(contract.filters.AuctionSettled(), 0, "latest"),
+    ]);
+  } catch (err) {
+    if (provider) {
+      const latestBlock = await provider.getBlockNumber().catch(() => 0);
+      const startBlock = Math.max(0, latestBlock - 9999);
+      [bidLogs, settleLogs] = await Promise.all([
+        contract.queryFilter(contract.filters.BidPlaced(), startBlock, "latest").catch(() => []),
+        contract.queryFilter(contract.filters.AuctionSettled(), startBlock, "latest").catch(() => []),
+      ]);
+    }
+  }
 
   const bidsByAuction = new Map<string, BidLogEntry[]>();
   const blockNumbers = new Set<number>();
@@ -164,7 +179,6 @@ async function loadAuctionEvents(contract: Contract): Promise<{
     settlements.set(entry.auctionId, entry);
   }
 
-  const provider = contract.runner?.provider;
   const blockTimes = new Map<number, number>();
   if (provider) {
     await Promise.all(
@@ -215,7 +229,20 @@ export async function fetchOnchainAuctions(): Promise<Auction[]> {
 export async function fetchOnchainAuction(id: string): Promise<Auction> {
   const contract = await getEscrowContract(false);
   const row = await contract.auctions(id);
-  const bidLogs = await contract.queryFilter(contract.filters.BidPlaced(id), 0, "latest");
+  const provider = contract.runner?.provider;
+  let bidLogs: any[] = [];
+  try {
+    bidLogs = await contract.queryFilter(contract.filters.BidPlaced(id), 0, "latest");
+  } catch (err) {
+    if (provider) {
+      const latestBlock = await provider.getBlockNumber().catch(() => 0);
+      bidLogs = await contract.queryFilter(
+        contract.filters.BidPlaced(id),
+        Math.max(0, latestBlock - 9999),
+        "latest",
+      ).catch(() => []);
+    }
+  }
   const bids: BidLogEntry[] = [];
   const blockTimes = new Map<number, number>();
   for (const raw of bidLogs as EventLog[]) {
@@ -231,7 +258,6 @@ export async function fetchOnchainAuction(id: string): Promise<Auction> {
   }
   bids.sort((a, b) => a.blockNumber - b.blockNumber);
 
-  const provider = contract.runner?.provider;
   if (provider) {
     await Promise.all(
       Array.from(new Set(bids.map((b) => b.blockNumber))).map(async (block) => {
@@ -247,11 +273,24 @@ export async function fetchOnchainAuction(id: string): Promise<Auction> {
 export async function fetchMyBidHistory(address: string): Promise<BidHistoryEntry[]> {
   if (!address) return [];
   const contract = await getEscrowContract(false);
-  const myBidLogs = (await contract.queryFilter(
-    contract.filters.BidPlaced(null, address),
-    0,
-    "latest",
-  )) as EventLog[];
+  const provider = contract.runner?.provider;
+  let myBidLogs: EventLog[] = [];
+  try {
+    myBidLogs = (await contract.queryFilter(
+      contract.filters.BidPlaced(null, address),
+      0,
+      "latest",
+    )) as EventLog[];
+  } catch (err) {
+    if (provider) {
+      const latestBlock = await provider.getBlockNumber().catch(() => 0);
+      myBidLogs = (await contract.queryFilter(
+        contract.filters.BidPlaced(null, address),
+        Math.max(0, latestBlock - 9999),
+        "latest",
+      )) as EventLog[];
+    }
+  }
 
   if (myBidLogs.length === 0) return [];
 

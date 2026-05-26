@@ -7,6 +7,7 @@ import { useAuctions } from "@/hooks/useAuctions";
 import { useCountdown } from "@/hooks/useCountdown";
 import { DEFAULT_CHAIN } from "@/config/chains";
 import type { Auction } from "@/types/auction";
+import heroBg from "@/assets/herobg.jpeg";
 
 export const Route = createFileRoute("/")({ component: Landing });
 
@@ -28,14 +29,12 @@ function Landing() {
 
       {/* ============================ HERO ============================ */}
       <section className="relative min-h-[100svh] w-full overflow-hidden">
-        {featured ? (
-          <img
-            src={featured.nft.image}
-            alt=""
-            aria-hidden
-            className="absolute inset-0 h-full w-full object-cover opacity-70"
-          />
-        ) : null}
+        <img
+          src={heroBg}
+          alt=""
+          aria-hidden
+          className="absolute inset-0 h-full w-full object-cover opacity-60"
+        />
         <div className="absolute inset-0 hero-vignette" />
 
         <div className="relative z-10 mx-auto flex min-h-[100svh] max-w-7xl flex-col px-6 pt-28 pb-10 md:px-12 md:pt-32 md:pb-14">
@@ -205,7 +204,7 @@ function Landing() {
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3 backdrop-blur-sm">
+    <div className="rounded-2xl border border-white/10 bg-black/80 px-4 py-3 transition-colors duration-150">
       <div className="text-[10px] uppercase tracking-[0.2em] text-white/50">{label}</div>
       <div className="mt-1 text-lg font-semibold">{value}</div>
     </div>
@@ -214,7 +213,7 @@ function Stat({ label, value }: { label: string; value: string }) {
 
 function Feature({ title, text }: { title: string; text: string }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 hover:border-white/20 hover:bg-white/[0.05]">
+    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 transition-all duration-150 hover:border-white/20 hover:bg-white/[0.05]">
       <div className="text-lg font-semibold">{title}</div>
       <div className="mt-2 text-sm text-white/60">{text}</div>
     </div>
@@ -224,7 +223,7 @@ function Feature({ title, text }: { title: string; text: string }) {
 function FeaturedHeroCard({ featured }: { featured: Auction }) {
   const { label } = useCountdown(featured.endTime);
   return (
-    <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-black/70 backdrop-blur-md">
+    <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-zinc-950/90 transition-all duration-150">
       <div className="relative aspect-[4/3] overflow-hidden rounded-t-2xl">
         <img
           src={featured.nft.image}
@@ -269,7 +268,7 @@ function FeaturedHeroCard({ featured }: { featured: Auction }) {
 
 function EmptyHeroCard() {
   return (
-    <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-black/60 p-6 text-center backdrop-blur-sm">
+    <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-zinc-950/90 p-6 text-center transition-all duration-150">
       <div className="text-sm font-semibold">No live lots yet</div>
       <p className="mt-2 text-xs text-white/55">
         List the first NFT from the dashboard to seed the floor.

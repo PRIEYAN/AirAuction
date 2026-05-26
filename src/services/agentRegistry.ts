@@ -169,6 +169,19 @@ function mapDecision(row: any): AgentDecision {
 
 export async function fetchRecentDecisionEvents(limit = 25): Promise<EventLog[]> {
   const contract = readBenchmark();
-  const events = (await contract.queryFilter(contract.filters.DecisionLogged(), 0, "latest")) as EventLog[];
+  let events: EventLog[] = [];
+  try {
+    events = (await contract.queryFilter(contract.filters.DecisionLogged(), 0, "latest")) as EventLog[];
+  } catch (err) {
+    const provider = contract.runner?.provider;
+    if (provider) {
+      const latestBlock = await provider.getBlockNumber().catch(() => 0);
+      events = (await contract.queryFilter(
+        contract.filters.DecisionLogged(),
+        Math.max(0, latestBlock - 9999),
+        "latest",
+      )) as EventLog[];
+    }
+  }
   return events.slice(-limit).reverse();
 }

@@ -57,10 +57,18 @@ async function scanContract(contractAddress: string, owner: string): Promise<NFT
   const provider = getReadProvider();
   const contract = new Contract(contractAddress, ERC721_METADATA_ABI, provider);
 
-  const [collection, transfersIn] = await Promise.all([
-    contract.name().catch(() => "Unknown collection") as Promise<string>,
-    contract.queryFilter(contract.filters.Transfer(null, owner), 0, "latest"),
-  ]);
+  const collection = (await contract.name().catch(() => "Unknown collection")) as string;
+  let transfersIn: any[] = [];
+  try {
+    transfersIn = await contract.queryFilter(contract.filters.Transfer(null, owner), 0, "latest");
+  } catch (err) {
+    const latestBlock = await provider.getBlockNumber().catch(() => 0);
+    transfersIn = await contract.queryFilter(
+      contract.filters.Transfer(null, owner),
+      Math.max(0, latestBlock - 9999),
+      "latest",
+    ).catch(() => []);
+  }
 
   const candidateIds = Array.from(
     new Set(transfersIn.map((event: any) => String(event.args?.tokenId ?? event.args?.[2]))),
