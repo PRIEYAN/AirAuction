@@ -24,7 +24,7 @@
     "chai": "^6.2.2",
     "ethers": "^6.16.0",
     "forge-std": "github:foundry-rs/forge-std#v1.9.4",
-    "hardhat": "^3.4.5",
+    "hardhat": "^3.5.1",
     "mocha": "^11.7.5",
     "typescript": "~5.8.0"
   }

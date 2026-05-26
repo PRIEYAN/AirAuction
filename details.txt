@@ -1,0 +1,322 @@
+================================================================================
+ AirAuction — Deployment & Environment Setup Guide
+ (Linux / bash commands. Nothing here is executed — copy/paste as needed.)
+================================================================================
+
+This project has TWO halves that get deployed separately:
+
+  1. blockchain/   — Hardhat 3 project. Compiles + deploys Solidity contracts
+                     (AuctionAirEscrow, TestNFT, and the three "Agent" registries)
+                     to Mantle Sepolia testnet.
+
+  2. src/ (root)   — TanStack Start + Vite frontend. Reads contract addresses
+                     from VITE_* env vars and talks to the chain via ethers.
+
+There is also an off-chain "agent" backend referenced by VITE_AGENT_API_URL
+(default http://localhost:5050) — that service lives outside this repo; the
+frontend just consumes it.
+
+================================================================================
+ 1. WHAT EACH DEPLOY SCRIPT DOES (and why there are two "mantle" deploys)
+================================================================================
+
+Defined in blockchain/package.json:
+
+  npm run compile
+      Compiles every .sol under blockchain/contracts/ with Hardhat.
+      Always run this before any deploy so the artifacts are fresh.
+
+  npm run deploy:mantle-sepolia
+      → runs scripts/deploy-mantle-sepolia.ts
+      Deploys ONLY the AuctionAirEscrow contract (the escrow that holds NFTs
+      and bidder deposits, settles auctions, takes the platform fee).
+      Outputs: blockchain/deployments/mantle-sepolia.json
+      Frontend env you must set after this:
+          VITE_AUCTION_ESCROW_ADDRESS=<deployed address>
+          VITE_PUBLIC_RPC_URL=https://rpc.sepolia.mantle.xyz
+
+  npm run deploy:mantle-sepolia:ignition
+      Same target contract, but deployed via Hardhat Ignition module
+      (ignition/modules/AuctionAirEscrow.ts) instead of a plain script.
+      Use this ONLY if you want Ignition's idempotent / re-runnable behavior.
+      For first-time deploys the plain script above is simpler.
+
+  npm run deploy:agents:mantle-sepolia
+      → runs scripts/deploy-agents-mantle-sepolia.ts
+      Deploys the THREE ERC-8004-aligned "agent" contracts in sequence:
+          [1] AgentIdentityRegistry      (who the AI auctioneer is)
+          [2] AgentReputationRegistry    (feedback / reviews on agent runs)
+          [3] AgentBenchmark             (on-chain perf scores)
+      Then auto-registers a primary agent (label/domain/description) under
+      the operator address you set, captures the emitted agentId, and
+      writes blockchain/deployments/agents.mantle-sepolia.json.
+
+  npm run mint:mantle-sepolia
+      → runs scripts/mint-test-nft.ts
+      Deploys (or reuses, via TEST_NFT_ADDRESS) a TestNFT contract, mints
+      MINT_COUNT tokens with generated metadata to RECIPIENT, and writes
+      blockchain/deployments/test-nft.mantleSepolia.json. Use this to get
+      NFTs that you actually own so you can list them in the auction.
+
+------------------------------------------------------------------------------
+ "agents mantle" vs "normal mantle" — short version:
+
+   normal mantle deploy   = deploys the AUCTION/ESCROW contract only.
+                            Required for the marketplace to function at all.
+
+   agents mantle deploy   = deploys the AI-AGENT REGISTRY contracts and
+                            registers your AI auctioneer's on-chain identity.
+                            Required only if you want the "agents" feature
+                            (the /agents route, narration, reputation scores).
+                            Skip it if you only care about plain auctions.
+------------------------------------------------------------------------------
+
+================================================================================
+ 2. PREREQUISITES (one-time install)
+================================================================================
+
+# Install Node 20+ and npm. On Debian/Ubuntu:
+sudo apt update
+sudo apt install -y curl git
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt install -y nodejs
+
+# Verify
+node -v        # should be v20.x or newer
+npm -v
+
+# (Optional) bun — repo has bun.lock so bun also works for the frontend
+curl -fsSL https://bun.sh/install | bash
+
+# Clone & enter
+git clone <your-fork-url> AirAuction
+cd AirAuction
+
+# Install root (frontend) deps
+npm install        # or: bun install
+
+# Install blockchain deps
+cd blockchain
+npm install
+cd ..
+
+================================================================================
+ 3. ENVIRONMENT VARIABLES — what to put where
+================================================================================
+
+There are TWO .env files in play.
+
+------------------------------------------------------------------------------
+ A) blockchain/.env          (used by Hardhat to deploy)
+------------------------------------------------------------------------------
+
+# Create it:
+touch blockchain/.env
+chmod 600 blockchain/.env     # keep your private key readable only by you
+
+# Required for ANY mantle-sepolia deploy:
+MANTLE_SEPOLIA_RPC_URL=https://rpc.sepolia.mantle.xyz
+MANTLE_SEPOLIA_PRIVATE_KEY=0xabc...   # funded deployer key, MUST hold MNT
+
+# Optional (only if you also want to deploy to Ethereum Sepolia):
+SEPOLIA_RPC_URL=https://sepolia.infura.io/v3/<key>
+SEPOLIA_PRIVATE_KEY=0xabc...
+
+# Optional overrides for deploy-mantle-sepolia.ts:
+PLATFORM_FEE_BPS=250          # default 250 = 2.50%
+FEE_RECIPIENT=0x...           # default = deployer address
+
+# Optional overrides for deploy-agents-mantle-sepolia.ts:
+NETWORK=mantleSepolia
+AGENT_OPERATOR=0x...          # address that will own the agentId
+AGENT_LABEL="AuctionAir Auctioneer"
+AGENT_DOMAIN="https://auctionair.local"
+AGENT_DESCRIPTION="AI auctioneer narrating live NFT auctions on Mantle."
+AGENT_METADATA_URI=           # optional; auto-generated as data: URI if blank
+
+# Optional overrides for mint-test-nft.ts:
+NETWORK=mantleSepolia
+RECIPIENT=0x...               # default = signer
+TEST_NFT_ADDRESS=0x...        # if set, reuses an existing NFT contract
+MINT_COUNT=3                  # default 3
+
+# Funding the deployer key (it MUST have MNT, otherwise the script throws):
+# Get free testnet MNT here:  https://faucet.sepolia.mantle.xyz
+
+# Hardhat 3 prefers configVariable() over raw process.env. Alternative
+# to a .env file is the keystore plugin:
+npx hardhat keystore set MANTLE_SEPOLIA_PRIVATE_KEY
+npx hardhat keystore set MANTLE_SEPOLIA_RPC_URL
+
+------------------------------------------------------------------------------
+ B) .env  (root — used by Vite/the frontend)
+------------------------------------------------------------------------------
+
+# Create it (the repo already has a .env with GROQ_API, just append):
+touch .env
+
+# Already there:
+GROQ_API="gsk_..."                       # Groq LLM key for agent narration
+
+# Chain-side (fill in AFTER you run the deploy scripts):
+VITE_AUCTION_ESCROW_ADDRESS=0x...        # from deploy:mantle-sepolia output
+VITE_PUBLIC_RPC_URL=https://rpc.sepolia.mantle.xyz
+VITE_NFT_CONTRACTS=0x...,0x...           # comma-sep list; include your TestNFT
+
+# Agent registries (only if you ran deploy:agents:mantle-sepolia):
+VITE_AGENT_IDENTITY_ADDRESS=0x...
+VITE_AGENT_REPUTATION_ADDRESS=0x...
+VITE_AGENT_BENCHMARK_ADDRESS=0x...
+VITE_AGENT_ID=1                          # the agentId emitted on registration
+VITE_AGENT_API_URL=http://localhost:5050 # off-chain agent backend; optional
+
+# Optional third-party integrations:
+VITE_PINATA_JWT=eyJ...                   # needed to pin auction images to IPFS
+VITE_RESERVOIR_API_KEY=...               # for NFT discovery via Reservoir
+VITE_RESERVOIR_BASE_URL=https://api-mantle.reservoir.tools
+
+# IMPORTANT: only variables prefixed with VITE_ are exposed to the browser.
+# Anything secret (private keys, paid API secrets that aren't meant to be
+# public) MUST NOT use the VITE_ prefix — it would leak in the JS bundle.
+
+------------------------------------------------------------------------------
+ C) Agent backend (.env in that service, NOT in this repo)
+     The deploy-agents script prints these — paste them into whatever
+     off-chain service runs the AI auctioneer:
+        AGENT_IDENTITY_ADDRESS=0x...
+        AGENT_BENCHMARK_ADDRESS=0x...
+        AGENT_ID=<id>
+        AGENT_OPERATOR_ADDRESS=0x...
+        AGENT_PRIVATE_KEY=0x...   # MUST control AGENT_OPERATOR_ADDRESS
+------------------------------------------------------------------------------
+
+================================================================================
+ 4. LOCAL TESTING (no testnet, no real money)
+================================================================================
+
+# In one terminal — start a local Hardhat node (in-memory chain):
+cd blockchain
+npx hardhat node
+#   → exposes an RPC at http://127.0.0.1:8545 and prints 20 funded accounts.
+
+# In a second terminal — run Solidity + Mocha tests:
+cd blockchain
+npx hardhat test                  # all tests
+npx hardhat test solidity         # only Foundry-style .sol tests
+npx hardhat test mocha            # only TypeScript integration tests
+
+# Deploy AuctionAirEscrow to the local node via Ignition:
+npx hardhat ignition deploy ignition/modules/AuctionAirEscrow.ts
+
+# For local frontend testing pointing at the local chain, set in .env:
+VITE_PUBLIC_RPC_URL=http://127.0.0.1:8545
+VITE_AUCTION_ESCROW_ADDRESS=<address printed by ignition>
+# (You will also need to import one of the local node's private keys into
+#  MetaMask and add the custom RPC.)
+
+# Run the frontend:
+npm run dev        # vite dev server, default http://localhost:5173
+
+================================================================================
+ 5. FULL TESTNET (Mantle Sepolia) DEPLOY — the happy path
+================================================================================
+
+# 0. Fund your deployer address with testnet MNT:
+#    https://faucet.sepolia.mantle.xyz
+
+# 1. Fill in blockchain/.env  (RPC + PRIVATE_KEY at minimum)
+
+# 2. Compile:
+cd blockchain
+npm run compile
+
+# 3. Deploy the escrow contract:
+npm run deploy:mantle-sepolia
+#    → prints the AuctionAirEscrow address and writes
+#      blockchain/deployments/mantle-sepolia.json
+#    → copy the address into root .env as VITE_AUCTION_ESCROW_ADDRESS
+
+# 4. (Optional) Mint test NFTs you own, so you have something to auction:
+npm run mint:mantle-sepolia
+#    → copy the TestNFT address into root .env as VITE_NFT_CONTRACTS
+
+# 5. (Optional, only if you want the agent feature) Deploy agent registries:
+npm run deploy:agents:mantle-sepolia
+#    → copy VITE_AGENT_IDENTITY_ADDRESS / _REPUTATION_ / _BENCHMARK_ / _ID
+#      into the root .env  (the script prints them ready to paste)
+
+# 6. Build & run the frontend:
+cd ..
+npm run build
+npm run preview            # local prod preview
+# or for live dev:
+npm run dev
+
+# 7. Cloudflare deploy (wrangler.jsonc is already in the repo):
+npx wrangler deploy
+#    → make sure all VITE_* vars exist as Cloudflare project secrets/vars
+#      BEFORE building, otherwise the bundle will ship with `undefined`s.
+
+================================================================================
+ 6. QUICK REFERENCE — minimum env vars per scenario
+================================================================================
+
+LOCAL FRONTEND ONLY (mock data, no chain):
+    GROQ_API
+    # everything else can be omitted; features that need a chain will throw
+    # at call-time with "Missing VITE_XXX..." errors.
+
+LOCAL FRONTEND + LOCAL HARDHAT NODE:
+    GROQ_API
+    VITE_PUBLIC_RPC_URL=http://127.0.0.1:8545
+    VITE_AUCTION_ESCROW_ADDRESS=<from ignition deploy>
+    VITE_NFT_CONTRACTS=<from local mint, optional>
+
+TESTNET DEPLOY (escrow only, no agents):
+    blockchain/.env:
+        MANTLE_SEPOLIA_RPC_URL
+        MANTLE_SEPOLIA_PRIVATE_KEY
+    .env:
+        VITE_PUBLIC_RPC_URL=https://rpc.sepolia.mantle.xyz
+        VITE_AUCTION_ESCROW_ADDRESS
+        VITE_NFT_CONTRACTS
+        VITE_PINATA_JWT          (if listing NFTs that need image pinning)
+        GROQ_API
+
+TESTNET DEPLOY (full, with agents):
+    everything above, PLUS:
+        VITE_AGENT_IDENTITY_ADDRESS
+        VITE_AGENT_REPUTATION_ADDRESS
+        VITE_AGENT_BENCHMARK_ADDRESS
+        VITE_AGENT_ID
+        VITE_AGENT_API_URL       (defaults to http://localhost:5050)
+
+================================================================================
+ 7. TROUBLESHOOTING
+================================================================================
+
+- "Deployer has 0 MNT"
+    Your MANTLE_SEPOLIA_PRIVATE_KEY address is unfunded. Use the faucet.
+
+- "Connected to chainId X, expected 5003"
+    Your MANTLE_SEPOLIA_RPC_URL points to the wrong network. Should be
+    https://rpc.sepolia.mantle.xyz
+
+- "Missing VITE_AUCTION_ESCROW_ADDRESS" (or similar) in the browser
+    The .env value wasn't present at BUILD time. Vite inlines envs at
+    build; restart `npm run dev` or rebuild after editing .env.
+
+- "escrow not approved" when calling createAuction
+    Your seller wallet must call approve()/setApprovalForAll() on the
+    NFT contract granting the escrow address rights to move the token.
+
+- Ignition asks about previous deployment / journal file
+    Either accept the resume, or wipe blockchain/ignition/deployments/
+    to start clean. Wiping loses the ability to redeploy idempotently.
+
+- "Missing GROQ_API"
+    Set it in root .env. Used by the AI narration/chat feature.
+
+================================================================================
+ END OF FILE
+================================================================================

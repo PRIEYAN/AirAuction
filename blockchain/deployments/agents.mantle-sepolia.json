@@ -1,0 +1,26 @@
+{
+  "network": "mantleSepolia",
+  "chainId": 5003,
+  "explorer": "https://explorer.sepolia.mantle.xyz",
+  "contracts": {
+    "AgentIdentityRegistry": "0x7dc508aC5EE4c9D864c0f1A1514efADD8295f76d",
+    "AgentReputationRegistry": "0xfB2043Fcf329d61056D3B1FaBF61825DA9D1288A",
+    "AgentBenchmark": "0x49e509f39b110820f221957c003E7cE793F10ef4"
+  },
+  "primaryAgent": {
+    "agentId": "1",
+    "operator": "0x348B754103e12434AEe3Df42471aD939911939Dd",
+    "label": "AuctionAir Auctioneer",
+    "domain": "https://auctionair.local",
+    "description": "AI auctioneer narrating live NFT auctions on Mantle. Records every decision on-chain via ERC-8004-aligned registries.",
+    "metadataURI": "data:application/json;base64,eyJuYW1lIjoiQXVjdGlvbkFpciBBdWN0aW9uZWVyIiwiZG9tYWluIjoiaHR0cHM6Ly9hdWN0aW9uYWlyLmxvY2FsIiwiZGVzY3JpcHRpb24iOiJBSSBhdWN0aW9uZWVyIG5hcnJhdGluZyBsaXZlIE5GVCBhdWN0aW9ucyBvbiBNYW50bGUuIFJlY29yZHMgZXZlcnkgZGVjaXNpb24gb24tY2hhaW4gdmlhIEVSQy04MDA0LWFsaWduZWQgcmVnaXN0cmllcy4iLCJjYXBhYmlsaXRpZXMiOlsibmFycmF0aW9uIiwiYXVjdGlvbi1jb21tZW50YXJ5IiwicWEiXSwibW9kZWwiOiJsbGFtYS0zLjMtNzBiLXZlcnNhdGlsZSIsInN0YW5kYXJkcyI6WyJFUkMtODAwNCJdLCJjcmVhdGVkQXQiOiIyMDI2LTA1LTI2VDA2OjE5OjA3Ljk0NloifQ==",
+    "registeredAt": "2026-05-26T06:19:43.037Z"
+  },
+  "agents": [
+    {
+      "agentId": "1",
+      "operator": "0x348B754103e12434AEe3Df42471aD939911939Dd",
+      "label": "AuctionAir Auctioneer"
+    }
+  ]
+}

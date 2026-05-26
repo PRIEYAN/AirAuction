@@ -1,0 +1,15 @@
+{
+  "network": "mantleSepolia",
+  "chainId": 5003,
+  "explorer": "https://explorer.sepolia.mantle.xyz",
+  "contracts": {
+    "AuctionAirEscrow": {
+      "address": "0xA9cA4740f15353c040C68eF4EB2a759A8E4F483D",
+      "feeRecipient": "0x348B754103e12434AEe3Df42471aD939911939Dd",
+      "platformFeeBps": 250,
+      "deployer": "0x348B754103e12434AEe3Df42471aD939911939Dd",
+      "txHash": "0xfcb05d77a1abc3edf16886eda60941a017a04bae1b0931fd9525f145a629f594",
+      "deployedAt": "2026-05-26T06:15:45.170Z"
+    }
+  }
+}
