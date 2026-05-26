@@ -13,12 +13,7 @@ export function StatusBadge({ status, className }: { status: AuctionStatus; clas
       "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider",
       map[status], className,
     )}>
-      {status === "LIVE" && (
-        <span className="relative flex h-2 w-2">
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
-          <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
-        </span>
-      )}
+      {status === "LIVE" && <span className="h-1.5 w-1.5 rounded-full bg-red-500" />}
       {status}
     </span>
   );

@@ -6,7 +6,6 @@ import {
   Copy,
   ExternalLink,
   LogOut,
-  Sparkles,
   Wallet,
   Zap,
 } from "lucide-react";
@@ -58,32 +57,13 @@ export function WalletButton({
 
   if (!connected) {
     return (
-      <div className="relative inline-block">
-        {/* glow halo */}
-        <span
-          aria-hidden
-          className="pointer-events-none absolute -inset-1 rounded-full bg-gradient-to-r from-fuchsia-500 via-violet-500 to-cyan-400 opacity-70 blur-md transition group-hover:opacity-100 animate-gradient-pan"
-        />
-        <Button
-          disabled={connecting}
-          onClick={onConnect}
-          className="group relative flex h-10 items-center gap-2 rounded-full bg-white px-5 text-sm font-semibold text-black shadow-[0_4px_24px_rgba(255,255,255,0.18)] transition hover:bg-white/90 hover:shadow-[0_6px_36px_rgba(196,181,253,0.45)] disabled:opacity-70"
-        >
-          {connecting ? (
-            <>
-              <span className="flex h-4 w-4 items-center justify-center">
-                <span className="h-2 w-2 animate-ping rounded-full bg-fuchsia-500" />
-              </span>
-              Connecting…
-            </>
-          ) : (
-            <>
-              <Sparkles className="h-4 w-4 text-fuchsia-500 transition group-hover:rotate-12" />
-              Connect Wallet
-            </>
-          )}
-        </Button>
-      </div>
+      <Button
+        disabled={connecting}
+        onClick={onConnect}
+        className="h-10 rounded-full bg-white px-5 text-sm font-semibold text-black hover:bg-white/90 disabled:opacity-70"
+      >
+        {connecting ? "Connecting…" : "Connect Wallet"}
+      </Button>
     );
   }
 
@@ -93,26 +73,21 @@ export function WalletButton({
     <div ref={wrapRef} className="relative inline-block">
       <button
         onClick={() => setOpen((next) => !next)}
-        className={`flex items-center gap-2 rounded-full border bg-white/5 px-3 py-1.5 text-sm text-white backdrop-blur transition hover:bg-white/10 ${
+        className={`flex items-center gap-2 rounded-full border bg-white/5 px-3 py-1.5 text-sm text-white hover:bg-white/10 ${
           onWrongChain ? "border-amber-400/40" : "border-white/15"
         }`}
       >
-        <span className="relative flex h-6 w-6 items-center justify-center">
-          <span className="absolute inset-0 rounded-full bg-gradient-to-br from-fuchsia-400 to-cyan-400 opacity-70 animate-pulse-ring" />
-          <span className="relative flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-fuchsia-400 to-cyan-400 text-black">
-            <Wallet className="h-3 w-3" />
-          </span>
+        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white text-black">
+          <Wallet className="h-3 w-3" />
         </span>
         <span className="font-mono">{truncateAddr(address)}</span>
-        <ChevronDown
-          className={`h-3.5 w-3.5 text-white/50 transition ${open ? "rotate-180" : ""}`}
-        />
+        <ChevronDown className={`h-3.5 w-3.5 text-white/50 ${open ? "rotate-180" : ""}`} />
       </button>
 
       {open && (
-        <div className="absolute right-0 z-50 mt-2 w-72 animate-fade-up rounded-2xl border border-white/10 bg-zinc-950/95 p-3 shadow-2xl backdrop-blur-xl">
-          <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-gradient-to-br from-fuchsia-500/15 via-violet-500/10 to-cyan-500/15 p-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-fuchsia-400 to-cyan-400 text-black">
+        <div className="absolute right-0 z-50 mt-2 w-72 rounded-2xl border border-white/10 bg-zinc-950/95 p-3 shadow-2xl">
+          <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.04] p-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-black">
               <Wallet className="h-5 w-5" />
             </div>
             <div className="min-w-0 flex-1">

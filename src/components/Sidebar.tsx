@@ -21,10 +21,10 @@ export function Sidebar() {
   const { pathname } = useLocation();
   const { disconnect, address } = useWallet();
   return (
-    <aside className="sticky top-0 hidden h-screen w-64 flex-col border-r border-white/5 bg-black/40 p-5 backdrop-blur-xl md:flex">
+    <aside className="sticky top-0 hidden h-screen w-64 flex-col border-r border-white/5 bg-black p-5 md:flex">
       <Link to="/" className="mb-8 flex items-center gap-2 text-white">
-        <div className="h-7 w-7 rounded-md bg-gradient-to-br from-white to-white/40" />
-        <span className="text-lg font-semibold tracking-tight">AuctionAir</span>
+        <div className="h-7 w-7 rounded-md border border-white/15 bg-white/10" />
+        <span className="text-base font-semibold tracking-tight">AuctionAir</span>
       </Link>
       <nav className="flex flex-1 flex-col gap-1">
         {items.map(({ to, label, icon: Icon, exact }) => {
@@ -33,7 +33,7 @@ export function Sidebar() {
             <Link
               key={to} to={to}
               className={cn(
-                "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition",
+                "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm",
                 active ? "bg-white text-black" : "text-white/60 hover:bg-white/5 hover:text-white",
               )}
             >
@@ -43,8 +43,8 @@ export function Sidebar() {
           );
         })}
       </nav>
-      <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-3">
-        <div className="text-[10px] uppercase tracking-wider text-white/40">Wallet</div>
+      <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+        <div className="text-[10px] uppercase tracking-[0.2em] text-white/45">Wallet</div>
         <div className="mt-1 text-sm text-white">
           {address ? truncateAddr(address) : <span className="text-white/40">Not connected</span>}
         </div>

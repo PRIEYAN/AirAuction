@@ -1,5 +1,4 @@
 import type { Auction } from "@/types/auction";
-import { GlassCard } from "./GlassCard";
 import { StatusBadge } from "./StatusBadge";
 import { ChainBadge } from "./ChainBadge";
 import { useCountdown } from "@/hooks/useCountdown";
@@ -10,10 +9,9 @@ import { Gavel, Users } from "lucide-react";
 export function AuctionCard({ auction, cta = "Quick Bid" }: { auction: Auction; cta?: string }) {
   const { label } = useCountdown(auction.status === "SCHEDULED" ? auction.startTime : auction.endTime);
   return (
-    <GlassCard className="group overflow-hidden">
+    <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] hover:border-white/20">
       <div className="relative aspect-square overflow-hidden">
-        <img src={auction.nft.image} alt={auction.nft.name}
-          className="h-full w-full object-cover transition duration-700 group-hover:scale-105" />
+        <img src={auction.nft.image} alt={auction.nft.name} className="h-full w-full object-cover" />
         <div className="absolute inset-x-3 top-3 flex justify-between">
           <StatusBadge status={auction.status} />
           <ChainBadge chain={auction.nft.chain} />
@@ -21,16 +19,16 @@ export function AuctionCard({ auction, cta = "Quick Bid" }: { auction: Auction; 
       </div>
       <div className="space-y-3 p-4">
         <div>
-          <div className="text-xs text-white/50">{auction.nft.collection}</div>
-          <div className="truncate text-base font-semibold text-white">{auction.nft.name}</div>
+          <div className="text-[10px] uppercase tracking-[0.2em] text-white/45">{auction.nft.collection}</div>
+          <div className="mt-0.5 truncate text-base font-semibold text-white">{auction.nft.name}</div>
         </div>
         <div className="flex items-end justify-between">
           <div>
-            <div className="text-[10px] uppercase tracking-wider text-white/40">Current Bid</div>
+            <div className="text-[10px] uppercase tracking-[0.2em] text-white/45">Current Bid</div>
             <div className="text-xl font-bold text-white">{auction.currentBid} ETH</div>
           </div>
           <div className="text-right">
-            <div className="text-[10px] uppercase tracking-wider text-white/40">
+            <div className="text-[10px] uppercase tracking-[0.2em] text-white/45">
               {auction.status === "SCHEDULED" ? "Starts in" : "Ends in"}
             </div>
             <div className="font-mono text-sm text-white/90">{label}</div>
@@ -46,6 +44,6 @@ export function AuctionCard({ auction, cta = "Quick Bid" }: { auction: Auction; 
           </Button>
         </Link>
       </div>
-    </GlassCard>
+    </div>
   );
 }

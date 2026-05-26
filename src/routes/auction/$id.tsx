@@ -180,9 +180,8 @@ function AuctionRoom() {
   }
 
   return (
-    <div className="relative min-h-screen bg-black text-white">
-      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(ellipse_at_top,rgba(120,80,255,0.18),transparent_60%)]" />
-      <div className="relative">
+    <div className="min-h-screen bg-black text-white">
+      <div>
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/5 px-6 py-4 md:px-10">
           <Link to="/dashboard/live" className="inline-flex items-center gap-2 text-sm text-white/60 hover:text-white">
             <ArrowLeft className="h-4 w-4" /> Back to live auctions
@@ -233,8 +232,8 @@ function AuctionRoom() {
           <div className="lg:col-span-5">
             <GlassCard className="flex h-[calc(100svh-180px)] flex-col">
               <div className="flex items-center gap-2 border-b border-white/10 p-4">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-fuchsia-400 to-cyan-400">
-                  <Sparkles className="h-4 w-4 text-black" />
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-black">
+                  <Sparkles className="h-4 w-4" />
                 </div>
                 <div>
                   <div className="text-sm font-semibold">AI Auctioneer</div>

@@ -52,7 +52,7 @@ export function AgentBadge({ compact = false }: { compact?: boolean }) {
     <GlassCard className="flex flex-col gap-3 p-4">
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-fuchsia-400 to-cyan-400 text-black">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full border border-white/15 bg-white/5 text-white">
             <Bot className="h-5 w-5" />
           </div>
           <div>
