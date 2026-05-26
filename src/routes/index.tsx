@@ -1,3 +1,4 @@
+import { memo, useMemo } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
@@ -14,14 +15,23 @@ export const Route = createFileRoute("/")({ component: Landing });
 function Landing() {
   const { auctions, loading, error } = useAuctions();
 
-  const live = auctions.filter((a) => a.status === "LIVE");
-  const ended = auctions.filter((a) => a.status === "ENDED");
-  const featured = live[0];
-
-  const totalVolume = ended.reduce((sum, a) => sum + a.currentBid, 0);
-  const uniqueBidders = new Set(
-    auctions.flatMap((a) => a.bidHistory.map((b) => b.bidder.toLowerCase())),
-  ).size;
+  const { live, ended, featured, totalVolume, uniqueBidders } = useMemo(() => {
+    const liveList = auctions.filter((a) => a.status === "LIVE");
+    const endedList = auctions.filter((a) => a.status === "ENDED");
+    const bidders = new Set<string>();
+    let volume = 0;
+    for (const a of auctions) {
+      for (const b of a.bidHistory) bidders.add(b.bidder.toLowerCase());
+    }
+    for (const a of endedList) volume += a.currentBid;
+    return {
+      live: liveList,
+      ended: endedList,
+      featured: liveList[0],
+      totalVolume: volume,
+      uniqueBidders: bidders.size,
+    };
+  }, [auctions]);
 
   return (
     <main className="min-h-screen bg-black text-white">
@@ -33,6 +43,9 @@ function Landing() {
           src={heroBg}
           alt=""
           aria-hidden
+          loading="eager"
+          decoding="async"
+          fetchPriority="high"
           className="absolute inset-0 h-full w-full object-cover opacity-60"
         />
         <div className="absolute inset-0 hero-vignette" />
@@ -202,32 +215,34 @@ function Landing() {
 // Sub-components
 // ---------------------------------------------------------------------------
 
-function Stat({ label, value }: { label: string; value: string }) {
+const Stat = memo(function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-2xl border border-white/10 bg-black/80 px-4 py-3 transition-colors duration-150">
       <div className="text-[10px] uppercase tracking-[0.2em] text-white/50">{label}</div>
       <div className="mt-1 text-lg font-semibold">{value}</div>
     </div>
   );
-}
+});
 
-function Feature({ title, text }: { title: string; text: string }) {
+const Feature = memo(function Feature({ title, text }: { title: string; text: string }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 transition-all duration-150 hover:border-white/20 hover:bg-white/[0.05]">
+    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 transition-colors duration-150 hover:border-white/20 hover:bg-white/[0.05]">
       <div className="text-lg font-semibold">{title}</div>
       <div className="mt-2 text-sm text-white/60">{text}</div>
     </div>
   );
-}
+});
 
-function FeaturedHeroCard({ featured }: { featured: Auction }) {
+const FeaturedHeroCard = memo(function FeaturedHeroCard({ featured }: { featured: Auction }) {
   const { label } = useCountdown(featured.endTime);
   return (
-    <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-zinc-950/90 transition-all duration-150">
+    <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-zinc-950/90 transition-colors duration-150">
       <div className="relative aspect-[4/3] overflow-hidden rounded-t-2xl">
         <img
           src={featured.nft.image}
           alt={featured.nft.name}
+          loading="eager"
+          decoding="async"
           className="h-full w-full object-cover"
         />
         <div className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-black/60 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-white">
@@ -264,11 +279,11 @@ function FeaturedHeroCard({ featured }: { featured: Auction }) {
       </div>
     </div>
   );
-}
+});
 
-function EmptyHeroCard() {
+const EmptyHeroCard = memo(function EmptyHeroCard() {
   return (
-    <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-zinc-950/90 p-6 text-center transition-all duration-150">
+    <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-zinc-950/90 p-6 text-center transition-colors duration-150">
       <div className="text-sm font-semibold">No live lots yet</div>
       <p className="mt-2 text-xs text-white/55">
         List the first NFT from the dashboard to seed the floor.
@@ -280,4 +295,4 @@ function EmptyHeroCard() {
       </Link>
     </div>
   );
-}
+});

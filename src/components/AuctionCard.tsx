@@ -11,7 +11,13 @@ export function AuctionCard({ auction, cta = "Quick Bid" }: { auction: Auction; 
   return (
     <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] hover:border-white/20">
       <div className="relative aspect-square overflow-hidden">
-        <img src={auction.nft.image} alt={auction.nft.name} className="h-full w-full object-cover" />
+        <img
+          src={auction.nft.image}
+          alt={auction.nft.name}
+          loading="lazy"
+          decoding="async"
+          className="h-full w-full object-cover"
+        />
         <div className="absolute inset-x-3 top-3 flex justify-between">
           <StatusBadge status={auction.status} />
           <ChainBadge chain={auction.nft.chain} />
