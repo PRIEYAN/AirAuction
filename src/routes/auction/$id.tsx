@@ -11,7 +11,7 @@ import { useCountdown } from "@/hooks/useCountdown";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { fetchOnchainAuction, placeOnchainBid, registerForAuction } from "@/services/auctionContract";
+import { fetchOnchainAuction, placeOnchainBid, registerForAuction, settleOnchainAuction } from "@/services/auctionContract";
 import { askAuctioneer, type OnchainReceipt } from "@/services/aiAuctioneer";
 import {
   isAgentRegistryConfigured,
@@ -79,7 +79,8 @@ function AuctionRoom() {
     traits: auction.nft.traits,
     currentBidEth: currentBid,
     reserveEth: auction.reservePrice,
-    bidderCount: auction.bidCount,
+    bidderCount: new Set(bids.map(b => b.bidder.toLowerCase())).size,
+    recentBids: bids.slice(0, 5).map(b => ({ bidder: b.bidder, amount: b.amount, time: b.time })),
   };
 
   const appendAuctioneerReply = (text: string, receipt?: OnchainReceipt | null) => {
@@ -143,6 +144,26 @@ function AuctionRoom() {
       setChat((c) => [
         ...c,
         { who: "System", text: err instanceof Error ? err.message : "Registration failed." },
+      ]);
+    } finally {
+      setBusy("");
+    }
+  };
+
+  const settleAuction = async () => {
+    if (!auction) return;
+    setBusy("Settling auction escrow on-chain...");
+    try {
+      await settleOnchainAuction(auction.id);
+      setAuction((prev) => prev ? { ...prev, settled: true } : null);
+      setChat((c) => [
+        ...c,
+        { who: "System", text: "Auction successfully settled! The contract has automatically distributed assets according to the auction rules." },
+      ]);
+    } catch (err) {
+      setChat((c) => [
+        ...c,
+        { who: "System", text: err instanceof Error ? err.message : "Settlement failed." },
       ]);
     } finally {
       setBusy("");
@@ -274,13 +295,30 @@ function AuctionRoom() {
                   <span className="text-white/40">Ends in</span>
                   <span className="font-mono">{label}</span>
                 </div>
-                <Button onClick={() => setBidOpen(true)}
-                  className="mt-3 w-full rounded-full bg-white text-black hover:bg-white/90">
-                  Place Bid
-                </Button>
-                <Button onClick={() => setRegisterOpen(true)} variant="ghost" className="mt-2 w-full rounded-full">
-                  Lock Deposit
-                </Button>
+                {auction.status === "ENDED" ? (
+                  auction.settled ? (
+                    <div className="mt-3 rounded-xl border border-white/10 bg-white/5 p-3 text-center text-xs text-white/60">
+                      Closed & Settled
+                    </div>
+                  ) : (
+                    <Button 
+                      onClick={settleAuction} 
+                      disabled={Boolean(busy)}
+                      className="mt-3 w-full rounded-full bg-emerald-500 text-white hover:bg-emerald-600">
+                      {busy ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null} Settle Auction
+                    </Button>
+                  )
+                ) : (
+                  <>
+                    <Button onClick={() => setBidOpen(true)}
+                      className="mt-3 w-full rounded-full bg-white text-black hover:bg-white/90">
+                      Place Bid
+                    </Button>
+                    <Button onClick={() => setRegisterOpen(true)} variant="ghost" className="mt-2 w-full rounded-full">
+                      Lock Deposit
+                    </Button>
+                  </>
+                )}
               </div>
               <div className="flex-1 overflow-y-auto p-3">
                 <div className="mb-2 px-1 text-[10px] uppercase tracking-wider text-white/40">Live feed</div>

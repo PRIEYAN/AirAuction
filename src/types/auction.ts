@@ -38,6 +38,7 @@ export interface Auction {
   status: AuctionStatus;
   reservePrice: number;
   bidHistory: Bid[];
+  settled: boolean;
 }
 
 export type BidResult = "WON" | "LEADING" | "OUTBID" | "LOST";

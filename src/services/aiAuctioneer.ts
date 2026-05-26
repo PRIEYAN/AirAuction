@@ -7,6 +7,7 @@ type AuctionContext = {
   currentBidEth: number;
   reserveEth: number;
   bidderCount: number;
+  recentBids?: Array<{ bidder: string; amount: number; time: string }>;
 };
 
 export interface OnchainReceipt {

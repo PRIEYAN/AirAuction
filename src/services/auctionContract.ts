@@ -52,22 +52,85 @@ export async function getEscrowContract(withSigner = true) {
   return new Contract(address, AUCTION_ESCROW_ABI, runner);
 }
 
-export async function approveNftForEscrow(nftContract: string, tokenId: string) {
-  const escrow = requireEnv(env.auctionEscrowAddress, "VITE_AUCTION_ESCROW_ADDRESS");
-  const signer = await getSigner();
-  const owner = await signer.getAddress();
-  const nft = new Contract(nftContract, ERC721_ABI, signer);
-  const [approved, approvedForAll] = await Promise.all([
-    nft.getApproved(tokenId) as Promise<string>,
-    nft.isApprovedForAll(owner, escrow) as Promise<boolean>,
-  ]);
+const ESCROW_ERROR_MAP: Record<string, string> = {
+  "ended": "This auction has already ended.",
+  "not owner": "You are not the contract owner.",
+  "not token owner": "You do not own this NFT token.",
+  "missing auction": "This auction lot does not exist.",
+  "seller blocked": "The seller cannot bid or register for their own auction.",
+  "registered": "You have already registered for this auction.",
+  "deposit too low": "The locked deposit amount is below the required minimum deposit.",
+  "not started": "This auction has not started yet.",
+  "not registered": "You must lock a bidder deposit to register before placing a bid.",
+  "bid too low": "Your bid is too low. It must be higher than the current bid.",
+  "payment too low": "The transaction payment amount is insufficient.",
+  "not ended": "This auction cannot be settled because it has not ended yet.",
+  "settled": "This auction has already been settled.",
+  "no refund": "You have no refundable deposit remaining for this auction.",
+  "not seller": "Only the seller can cancel this auction.",
+  "started": "This auction has already started and cannot be cancelled.",
+};
 
-  if (approved.toLowerCase() === escrow.toLowerCase() || approvedForAll) {
-    return undefined;
+export function parseEscrowError(err: any): Error {
+  let message = "Transaction failed.";
+  let reason = err?.reason || "";
+
+  if (!reason && err?.message) {
+    const match = err.message.match(/execution reverted:\s*["']([^"']+)["']/i) || 
+                  err.message.match(/reason=["']([^"']+)["']/i);
+    if (match && match[1]) {
+      reason = match[1];
+    }
   }
 
-  const tx = await nft.approve(escrow, tokenId);
-  return tx.wait();
+  if (reason && ESCROW_ERROR_MAP[reason.toLowerCase()]) {
+    message = ESCROW_ERROR_MAP[reason.toLowerCase()];
+  } else {
+    const msgLower = (err?.message || "").toLowerCase();
+    for (const [key, val] of Object.entries(ESCROW_ERROR_MAP)) {
+      if (msgLower.includes(`reverted with reason string '${key}'`) || 
+          msgLower.includes(`reverted: "${key}"`) || 
+          msgLower.includes(`"${key}"`) ||
+          msgLower.includes(`reason="${key}"`)) {
+        message = val;
+        break;
+      }
+    }
+  }
+
+  if (message === "Transaction failed.") {
+    if (err?.message?.includes("user rejected action") || err?.message?.includes("ACTION_REJECTED")) {
+      message = "Transaction rejected by user.";
+    } else if (err?.message?.includes("insufficient funds")) {
+      message = "Insufficient native token balance to cover gas and payment.";
+    } else {
+      message = err?.reason || err?.message || "Transaction failed.";
+    }
+  }
+
+  return new Error(message);
+}
+
+export async function approveNftForEscrow(nftContract: string, tokenId: string) {
+  try {
+    const escrow = requireEnv(env.auctionEscrowAddress, "VITE_AUCTION_ESCROW_ADDRESS");
+    const signer = await getSigner();
+    const owner = await signer.getAddress();
+    const nft = new Contract(nftContract, ERC721_ABI, signer);
+    const [approved, approvedForAll] = await Promise.all([
+      nft.getApproved(tokenId) as Promise<string>,
+      nft.isApprovedForAll(owner, escrow) as Promise<boolean>,
+    ]);
+
+    if (approved.toLowerCase() === escrow.toLowerCase() || approvedForAll) {
+      return undefined;
+    }
+
+    const tx = await nft.approve(escrow, tokenId);
+    return await tx.wait();
+  } catch (err) {
+    throw parseEscrowError(err);
+  }
 }
 
 export async function createEscrowAuction(input: {
@@ -80,31 +143,53 @@ export async function createEscrowAuction(input: {
   depositBps: number;
   metadataURI: string;
 }) {
-  const contract = await getEscrowContract(true);
-  const tx = await contract.createAuction(
-    input.nftContract,
-    input.tokenId,
-    parseEther(input.reserveEth),
-    parseEther(input.startingBidEth),
-    Math.floor(new Date(input.startTime).getTime() / 1000),
-    Math.floor(new Date(input.endTime).getTime() / 1000),
-    input.depositBps,
-    input.metadataURI,
-  );
-  return tx.wait();
+  try {
+    const contract = await getEscrowContract(true);
+    const tx = await contract.createAuction(
+      input.nftContract,
+      input.tokenId,
+      parseEther(input.reserveEth),
+      parseEther(input.startingBidEth),
+      Math.floor(new Date(input.startTime).getTime() / 1000),
+      Math.floor(new Date(input.endTime).getTime() / 1000),
+      input.depositBps,
+      input.metadataURI,
+    );
+    return await tx.wait();
+  } catch (err) {
+    throw parseEscrowError(err);
+  }
 }
 
 export async function registerForAuction(auctionId: string, depositEth: string) {
-  const contract = await getEscrowContract(true);
-  const tx = await contract.registerForAuction(auctionId, { value: parseEther(depositEth) });
-  return tx.wait();
+  try {
+    const contract = await getEscrowContract(true);
+    const tx = await contract.registerForAuction(auctionId, { value: parseEther(depositEth) });
+    return await tx.wait();
+  } catch (err) {
+    throw parseEscrowError(err);
+  }
 }
 
 export async function placeOnchainBid(auctionId: string, amountEth: string) {
-  const contract = await getEscrowContract(true);
-  const amount = parseEther(amountEth);
-  const tx = await contract.placeBid(auctionId, amount, { value: amount });
-  return tx.wait();
+  try {
+    const contract = await getEscrowContract(true);
+    const amount = parseEther(amountEth);
+    const tx = await contract.placeBid(auctionId, amount, { value: amount });
+    return await tx.wait();
+  } catch (err) {
+    throw parseEscrowError(err);
+  }
+}
+
+export async function settleOnchainAuction(auctionId: string) {
+  try {
+    const contract = await getEscrowContract(true);
+    const tx = await contract.settle(auctionId);
+    return await tx.wait();
+  } catch (err) {
+    throw parseEscrowError(err);
+  }
 }
 
 interface BidLogEntry {
@@ -377,6 +462,7 @@ async function mapAuctionRow(
     status,
     reservePrice: Number(formatEther(row.reservePrice)),
     bidHistory: buildBidHistory(bidLog, blockTimes),
+    settled: Boolean(row.settled),
     nft: {
       id: nftFromMetadata?.id ?? `${row.nftContract}:${row.tokenId}`,
       name: nftFromMetadata?.name ?? `Token #${row.tokenId}`,

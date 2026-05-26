@@ -1,12 +1,13 @@
 import { Link } from "@tanstack/react-router";
 import { WalletButton } from "./WalletButton";
+import logo from "../assets/logo.png";
 
 export function Navbar() {
   return (
     <nav className="absolute inset-x-0 top-0 z-30 border-b border-white/5">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5 md:px-12">
         <Link to="/" className="flex items-center gap-2 text-white">
-          <span className="h-7 w-7 rounded-md border border-white/15 bg-white/10" />
+          <img src={logo} alt="AuctionAir Logo" className="h-8 w-8 rounded-full object-contain" />
           <span className="text-base font-semibold tracking-tight">AuctionAir</span>
         </Link>
 
