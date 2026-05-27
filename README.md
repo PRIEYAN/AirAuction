@@ -56,13 +56,13 @@ AirAuction is an end-to-end English-auction marketplace for ERC-721 NFTs. Seller
 
 | Screen | Preview | Description |
 | --- | --- | --- |
-| **Landing page** | ![Landing](assets/img1.png) | Hero, live auction strip, ended volume + unique bidders stats. Route: [`src/routes/index.tsx`](src/routes/index.tsx). |
-| **Dashboard** | ![Dashboard](assets/img2.png) | Personalised home — your auctions, watchlist, bid activity. Route: [`src/routes/dashboard/index.tsx`](src/routes/dashboard/index.tsx). |
-| **Live auctions** | ![Live](assets/img3.png) | Currently-running lots with countdown, current highest bid, and one-click bid. Route: [`src/routes/dashboard/live.tsx`](src/routes/dashboard/live.tsx). |
-| **Scheduled auctions** | ![Scheduled](assets/img4.png) | Upcoming lots, register-ahead deposit flow. Route: [`src/routes/dashboard/scheduled.tsx`](src/routes/dashboard/scheduled.tsx). |
-| **My NFTs** | ![My NFTs](assets/img5.png) | NFTs in your connected wallet (via Reservoir API) — pick one to auction. Route: [`src/routes/dashboard/my-nfts.tsx`](src/routes/dashboard/my-nfts.tsx). |
-| **Raise auction** | ![Raise Auction](assets/img6.png) | Multi-step form: pick NFT, set reserve / starting bid / window / deposit bps, approve + escrow in two transactions. Route: [`src/routes/dashboard/raise.tsx`](src/routes/dashboard/raise.tsx). |
-| **AI Agent** | ![AI Agent](assets/img7.png) | Auctioneer chat with on-chain receipt of the model call (input hash, output hash, tx hash on the benchmark contract). Route: [`src/routes/agents.tsx`](src/routes/agents.tsx). |
+| **Landing page** | ![Landing](src/assets/img1.png) | Hero, live auction strip, ended volume + unique bidders stats. Route: [`src/routes/index.tsx`](src/routes/index.tsx). |
+| **Dashboard** | ![Dashboard](src/assets/img2.png) | Personalised home — your auctions, watchlist, bid activity. Route: [`src/routes/dashboard/index.tsx`](src/routes/dashboard/index.tsx). |
+| **Live auctions** | ![Live](src/assets/img3.png) | Currently-running lots with countdown, current highest bid, and one-click bid. Route: [`src/routes/dashboard/live.tsx`](src/routes/dashboard/live.tsx). |
+| **Scheduled auctions** | ![Scheduled](src/assets/img4.png) | Upcoming lots, register-ahead deposit flow. Route: [`src/routes/dashboard/scheduled.tsx`](src/routes/dashboard/scheduled.tsx). |
+| **My NFTs** | ![My NFTs](src/assets/img5.png) | NFTs in your connected wallet (via Reservoir API) — pick one to auction. Route: [`src/routes/dashboard/my-nfts.tsx`](src/routes/dashboard/my-nfts.tsx). |
+| **Raise auction** | ![Raise Auction](src/assets/img6.png) | Multi-step form: pick NFT, set reserve / starting bid / window / deposit bps, approve + escrow in two transactions. Route: [`src/routes/dashboard/raise.tsx`](src/routes/dashboard/raise.tsx). |
+| **AI Agent** | ![AI Agent](src/assets/img7.png) | Auctioneer chat with on-chain receipt of the model call (input hash, output hash, tx hash on the benchmark contract). Route: [`src/routes/agents.tsx`](src/routes/agents.tsx). |
 
 ---
 
