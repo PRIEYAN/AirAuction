@@ -147,7 +147,7 @@ function Raise() {
             </div>
           ) : (
             <GlassCard className="max-w-xl p-6 text-sm text-white/60">
-              No NFTs found. Set <code className="text-white/80">VITE_NFT_CONTRACTS</code> to a contract you own tokens on, or mint a test NFT with <code className="text-white/80">npm run mint:mantle-sepolia</code> in the <code className="text-white/80">blockchain/</code> folder.
+              No NFT in your wallet.
             </GlassCard>
           )}
         </>

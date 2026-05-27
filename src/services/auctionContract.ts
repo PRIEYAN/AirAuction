@@ -224,7 +224,7 @@ async function loadAuctionEvents(contract: Contract): Promise<{
   } catch (err) {
     if (provider) {
       const latestBlock = await provider.getBlockNumber().catch(() => 0);
-      const startBlock = Math.max(0, latestBlock - 9999);
+      const startBlock = Math.max(0, latestBlock - 2000);
       [bidLogs, settleLogs] = await Promise.all([
         contract.queryFilter(contract.filters.BidPlaced(), startBlock, "latest").catch(() => []),
         contract.queryFilter(contract.filters.AuctionSettled(), startBlock, "latest").catch(() => []),
@@ -323,7 +323,7 @@ export async function fetchOnchainAuction(id: string): Promise<Auction> {
       const latestBlock = await provider.getBlockNumber().catch(() => 0);
       bidLogs = await contract.queryFilter(
         contract.filters.BidPlaced(id),
-        Math.max(0, latestBlock - 9999),
+        Math.max(0, latestBlock - 2000),
         "latest",
       ).catch(() => []);
     }
@@ -371,7 +371,7 @@ export async function fetchMyBidHistory(address: string): Promise<BidHistoryEntr
       const latestBlock = await provider.getBlockNumber().catch(() => 0);
       myBidLogs = (await contract.queryFilter(
         contract.filters.BidPlaced(null, address),
-        Math.max(0, latestBlock - 9999),
+        Math.max(0, latestBlock - 2000),
         "latest",
       )) as EventLog[];
     }
