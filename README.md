@@ -387,6 +387,10 @@ Required env vars in the Vercel dashboard: copy the same `VITE_*` variables from
 
 ---
 
-## License
+## Team 
+**Prieyan MN**
+**Sanjay E**
+**MadhanRaj M**
+**Lakshanika RSM**
 
-MIT — see contract SPDX header. Frontend code is unlicensed by default; add a `LICENSE` file if you intend to open-source it.
+<div align="center"><p>Developed with ❤︎⁠</p></div>
