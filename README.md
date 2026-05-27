@@ -1,6 +1,6 @@
 <div align="center">
 
-# AirAuction
+<img src="src/assets/banner.png" alt="AirAuction Cover Banner" width="100%" />
 
 **A fully on-chain NFT auction protocol with an AI Auctioneer agent, IPFS-anchored audit trails, and verifiable agent reputation — all in one React + TanStack Start app.**
 
